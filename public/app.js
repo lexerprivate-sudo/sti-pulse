@@ -620,17 +620,35 @@ function bind() {
     setTimeout(() => (btn.textContent = "Send test"), 1600);
   });
 
-  $("enable-notifs").addEventListener("click", async () => {
-    if (!("Notification" in window)) {
-      $("enable-notifs").textContent = "Not supported";
-      return;
-    }
-    const permission = await Notification.requestPermission();
-    $("enable-notifs").textContent = permission === "granted" ? "Browser alerts on ✓" : "Permission denied";
-    if (permission === "granted") {
-      new Notification("STI Pulse", { body: "Browser alerts are on for this device.", icon: "icon-192.png" });
-    }
-  });
+function renderNotifState() {
+  const btn = $("enable-notifs");
+  if (!btn) return;
+  if (!("Notification" in window)) {
+    btn.textContent = "Not supported";
+    btn.disabled = true;
+    return;
+  }
+  if (Notification.permission === "granted") {
+    btn.textContent = "Browser alerts on ✓";
+    btn.disabled = true;
+  } else if (Notification.permission === "denied") {
+    btn.textContent = "Permission denied";
+    btn.disabled = true;
+    $("install-hint").textContent = "Alerts are blocked — enable them for this site in your browser settings.";
+  }
+}
+
+$("enable-notifs").addEventListener("click", async () => {
+  if (!("Notification" in window)) {
+    $("enable-notifs").textContent = "Not supported";
+    return;
+  }
+  const permission = await Notification.requestPermission();
+  renderNotifState();
+  if (permission === "granted") {
+    new Notification("STI Pulse", { body: "Browser alerts are on for this device.", icon: "icon-192.png" });
+  }
+});
 
   els.settingsForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -715,6 +733,7 @@ if (window.matchMedia("(display-mode: standalone)").matches) {
 }
 
 bind();
+renderNotifState();
 load();
 startEvents();
 
