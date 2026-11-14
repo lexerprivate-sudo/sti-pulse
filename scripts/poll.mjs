@@ -118,6 +118,14 @@ if (!assignments.length) {
   console.error("Feed parsed but contained no assignments.");
   process.exit(1);
 }
+// Guard against a partially-truncated feed (eLMS occasionally returns a
+// subset). Keep the previous data rather than clobbering it.
+const priorCount = state.seen ? Object.keys(state.seen).length : 0;
+if (priorCount > 0 && assignments.length < Math.ceil(priorCount * 0.5)) {
+  if (fs.existsSync(lastDataPath)) fs.copyFileSync(lastDataPath, dataPath);
+  console.warn(`Feed returned only ${assignments.length} of ~${priorCount} assignments; treating as partial and keeping previous data.`);
+  process.exit(0);
+}
 
 const baseline = !state.lastPoll;
 const now = Date.now();
@@ -232,13 +240,20 @@ if (state.lastDigestDate !== pht.dateKey && pht.hour === 8) {
     const days = daysUntil(item.due);
     return days >= 0 && days <= 3;
   });
+  const overdueOpen = enriched.filter((item) => daysUntil(item.due) < 0);
+  const lines = [];
+  if (overdueOpen.length) {
+    lines.push(`Still open (${overdueOpen.length}):`);
+    lines.push(...overdueOpen.slice(0, 6).map((item) => `- ${item.title} (${formatDue(item.due, item.allDay)})`));
+  }
   if (soon.length) {
+    lines.push(`Due in 3 days (${soon.length}):`);
+    lines.push(...soon.slice(0, 8).map((item) => `- ${item.title} (${formatDue(item.due, item.allDay)})`));
+  }
+  if (lines.length) {
     await ntfy({
-      title: `STI Pulse: ${soon.length} deadline${soon.length === 1 ? "" : "s"} in 3 days`,
-      body: soon
-        .slice(0, 8)
-        .map((item) => `- ${item.title} (${formatDue(item.due, item.allDay)})`)
-        .join("\n"),
+      title: "STI Pulse digest",
+      body: lines.join("\n"),
       tags: "alarm_clock,books",
     });
   }
