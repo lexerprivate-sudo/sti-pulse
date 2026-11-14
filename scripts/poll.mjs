@@ -314,8 +314,27 @@ if (reminders.length) {
   }
 }
 
-// Only commit data/state.json when something meaningful changed, so the
-// repository does not gain a commit every 15 minutes.
+// Weekly nudge to re-scan eLMS submission status, since the snapshot goes stale.
+try {
+  const snap = readJson(path.join(root, "public", "submitted.json"), null);
+  if (snap?.checkedAt) {
+    const ageDays = (Date.now() - new Date(snap.checkedAt).getTime()) / 86_400_000;
+    const lastNudge = state.lastScrapeNudge ? new Date(state.lastScrapeNudge).getTime() : 0;
+    const nudgeDue = Date.now() - lastNudge > 14 * 86_400_000;
+    if (ageDays > 14 && nudgeDue) {
+      await ntfy({
+        title: "Re-check eLMS submission status",
+        body: `Your submission snapshot is ${Math.round(ageDays)} days old. Open each class in eLMS, verify the Submitted column, and ask the assistant to refresh it.`,
+        tags: "reminder,books",
+      });
+      state.lastScrapeNudge = new Date(now).toISOString();
+      seenChanged = true;
+      writeJson(statePath, state);
+    }
+  }
+} catch {
+  /* non-fatal */
+}
 if (process.env.GITHUB_ENV) {
   fs.appendFileSync(process.env.GITHUB_ENV, `STATE_CHANGED=${seenChanged ? "1" : "0"}\n`);
 }
