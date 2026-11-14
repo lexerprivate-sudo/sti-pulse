@@ -376,14 +376,32 @@ function bind() {
   });
 
   $("test-notify").addEventListener("click", async () => {
+    const btn = $("test-notify");
     if (state.staticMode) {
-      window.open(`https://ntfy.sh/${encodeURIComponent(state.ntfyTopic)}`, "_blank", "noopener");
+      if (!state.ntfyTopic) {
+        btn.textContent = "Set a topic first";
+        setTimeout(() => (btn.textContent = "Send test"), 1800);
+        return;
+      }
+      btn.disabled = true;
+      try {
+        const res = await fetch(`https://ntfy.sh/${encodeURIComponent(state.ntfyTopic)}`, {
+          method: "POST",
+          headers: { Title: "STI Pulse test", Tags: "white_check_mark", Priority: "default" },
+          body: "If this arrived, alerts are wired up on this device.",
+        });
+        btn.textContent = res.ok ? "Sent ✓" : "Failed";
+      } catch {
+        btn.textContent = "Failed";
+      }
+      btn.disabled = false;
+      setTimeout(() => (btn.textContent = "Send test"), 2000);
       return;
     }
     const res = await fetch("/api/test-notify", { method: "POST" });
     const data = await res.json();
-    $("test-notify").textContent = data.ok ? "Sent ✓" : "Failed";
-    setTimeout(() => ($("test-notify").textContent = "Send test"), 1600);
+    btn.textContent = data.ok ? "Sent ✓" : "Failed";
+    setTimeout(() => (btn.textContent = "Send test"), 1600);
   });
 
   $("enable-notifs").addEventListener("click", async () => {
