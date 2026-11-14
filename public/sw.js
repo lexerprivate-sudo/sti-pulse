@@ -1,4 +1,4 @@
-const CACHE = "sti-pulse-v11";
+const CACHE = "sti-pulse-v14";
 const SHELL = ["./", "style.css", "app.js", "manifest.webmanifest", "schedule.json", "icon.svg", "icon-192.png"];
 
 self.addEventListener("install", (event) => {
@@ -25,8 +25,14 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
 
-  // Never cache API calls or the live data file.
-  if (url.pathname.includes("/api/") || url.pathname.endsWith("data.json")) return;
+  // Never cache API calls or the live data files.
+  if (
+    url.pathname.includes("/api/") ||
+    url.pathname.endsWith("data.json") ||
+    url.pathname.endsWith("submitted.json")
+  ) {
+    return;
+  }
 
   if (request.mode === "navigate") {
     event.respondWith(

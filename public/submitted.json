@@ -1,0 +1,42 @@
+{
+  "source": "eLMS assignment list snapshot (elms.sti.edu/student_assignments/list)",
+  "checkedAt": "2026-11-15T08:00:00.000+08:00",
+  "items": {
+    "AssignmentEvent-58569116": { "submitted": true, "course": "Computer Programming 1", "title": "01 Laboratory Activity 1 - ARG" },
+    "AssignmentEvent-58569118": { "submitted": true, "course": "Computer Programming 1", "title": "02 Laboratory Exercise 1 - ARG" },
+    "AssignmentEvent-58569119": { "submitted": true, "course": "Computer Programming 1", "title": "02 Performance Task 1 - ARG" },
+    "AssignmentEvent-58569121": { "submitted": true, "course": "Computer Programming 1", "title": "03 Laboratory Exercise 1 - ARG" },
+    "AssignmentEvent-58569125": { "submitted": true, "course": "Computer Programming 1", "title": "04 Performance Task 1 - ARG" },
+    "AssignmentEvent-58569127": { "submitted": false, "course": "Computer Programming 1", "title": "05 Laboratory Exercise 1 - ARG" },
+    "AssignmentEvent-59932531": { "submitted": true, "course": "Computer Programming 1", "title": "COMPROG 1 - MIDTERM QUIZ 1" },
+    "AssignmentEvent-59976330": { "submitted": true, "course": "Computer Programming 1", "title": "COMPROG 1 - MIDTERM QUIZ 2" },
+    "AssignmentEvent-59329513": { "submitted": true, "course": "Computer Programming 1", "title": "COMPROG 1 - PRELIM QUIZ 1" },
+    "AssignmentEvent-59341833": { "submitted": true, "course": "Computer Programming 1", "title": "PRELIM - TASK PERFORMANCE 1" },
+
+    "AssignmentEvent-60005987": { "submitted": true, "course": "Euthenics 1", "title": "INFOGRAPHIC" },
+    "AssignmentEvent-59964827": { "submitted": true, "course": "Euthenics 1", "title": "SELF INTRODUCTION" },
+    "AssignmentEvent-60261264": { "submitted": true, "course": "Euthenics 1", "title": "Three Quotations I Live By" },
+
+    "AssignmentEvent-58569148": { "submitted": true, "course": "Introduction to Computing", "title": "01 Activity 1" },
+    "AssignmentEvent-58569149": { "submitted": true, "course": "Introduction to Computing", "title": "01 Laboratory Activity 1 - ARG" },
+    "AssignmentEvent-58569150": { "submitted": true, "course": "Introduction to Computing", "title": "01 Laboratory Exercise 1 - ARG" },
+    "AssignmentEvent-58569153": { "submitted": true, "course": "Introduction to Computing", "title": "02 eLMS Quiz 1" },
+    "AssignmentEvent-58569155": { "submitted": true, "course": "Introduction to Computing", "title": "02 Performance Task - ARG" },
+    "AssignmentEvent-58569158": { "submitted": true, "course": "Introduction to Computing", "title": "03 Activity 1" },
+    "AssignmentEvent-58569159": { "submitted": true, "course": "Introduction to Computing", "title": "03 Assignment 1" },
+    "AssignmentEvent-58569160": { "submitted": true, "course": "Introduction to Computing", "title": "03 Laboratory Exercise 1 - ARG" },
+    "AssignmentEvent-58569163": { "submitted": true, "course": "Introduction to Computing", "title": "04 Laboratory Exercise 1 - ARG" },
+    "AssignmentEvent-58569164": { "submitted": false, "course": "Introduction to Computing", "title": "04 Performance Task 1 - ARG" },
+
+    "AssignmentEvent-59472923": { "submitted": true, "course": "NSTP 1", "title": "ACTIVITY 1 - COMMUNITY PROJECT PROPOSAL" },
+    "AssignmentEvent-59719718": { "submitted": true, "course": "NSTP 1", "title": "COMMUNITY PROJECT PROPOSAL PRESENTATION" },
+
+    "AssignmentEvent-58569292": { "submitted": false, "course": "Philippine Popular Culture", "title": "Prelim Journal Dropbox" },
+    "AssignmentEvent-58569293": { "submitted": false, "course": "Philippine Popular Culture", "title": "Midterm Journal Dropbox" },
+    "AssignmentEvent-58569294": { "submitted": false, "course": "Philippine Popular Culture", "title": "Prefinal Journal Dropbox" },
+    "AssignmentEvent-58569295": { "submitted": false, "course": "Philippine Popular Culture", "title": "Final Journal Dropbox" },
+
+    "AssignmentEvent-59432692": { "submitted": true, "course": "Purposive Communication", "title": "Prelim Quiz 1" },
+    "AssignmentEvent-59472470": { "submitted": true, "course": "Purposive Communication", "title": "Prelim Quiz 2" }
+  }
+}

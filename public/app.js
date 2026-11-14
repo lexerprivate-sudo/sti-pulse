@@ -12,7 +12,11 @@ const state = {
   termEnd: null,
   ntfyTopic: localStorage.getItem("sti-ntfy-topic") || "",
   pollMinutes: 10,
+  // Manual overrides: uid -> ISO date (marked done) or false (unmarked).
   done: loadDone(),
+  // Submission status scraped from eLMS: uid -> { submitted, course, title }.
+  submitted: {},
+  submittedAt: null,
 };
 
 function loadDone() {
@@ -31,20 +35,35 @@ function saveDone() {
   }
 }
 
+function submittedInElms(item) {
+  return Boolean(state.submitted[item.uid]?.submitted);
+}
+
 function isDone(item) {
-  return Boolean(state.done[item.uid]);
+  const manual = state.done[item.uid];
+  if (manual === false) return false;
+  if (manual) return true;
+  return submittedInElms(item);
 }
 
 function toggleDone(item) {
-  if (state.done[item.uid]) delete state.done[item.uid];
+  if (isDone(item)) state.done[item.uid] = false;
   else state.done[item.uid] = new Date().toISOString();
   saveDone();
+}
+
+function doneDate(item) {
+  const manual = state.done[item.uid];
+  if (typeof manual === "string") return manual;
+  if (submittedInElms(item)) return state.submittedAt;
+  return null;
 }
 
 const els = {
   list: $("assignment-list"),
   empty: $("empty"),
   listTitle: $("list-title"),
+  listNote: $("list-note"),
   lastChecked: $("last-checked"),
   statusPill: $("status-pill"),
   statusText: $("status-text"),
@@ -81,7 +100,7 @@ const FILTER_TITLES = {
   overdue: "Overdue work",
   week: "Due in the next 7 days",
   new: "New since your last check",
-  done: "Marked as done",
+  done: "Done & submitted in eLMS",
   all: "All tracked assignments",
 };
 
@@ -93,11 +112,9 @@ function isOverdue(item) {
   return new Date(item.due).getTime() < Date.now();
 }
 
-const RECENT_WINDOW = 30 * 86_400_000;
-
-function isRecentOverdue(item) {
-  const t = new Date(item.due).getTime();
-  return t < Date.now() && t >= Date.now() - RECENT_WINDOW;
+// Genuinely late and not yet accounted for: these are the ones that matter.
+function needsAttention(item) {
+  return isOverdue(item) && !isDone(item);
 }
 
 function fmtDue(item) {
@@ -119,7 +136,9 @@ function fmtRelative(iso) {
 }
 
 function badgeFor(item) {
-  if (isDone(item)) return { cls: "done", text: "Done" };
+  if (isDone(item)) {
+    return { cls: "done", text: submittedInElms(item) && !state.done[item.uid] ? "Submitted" : "Done" };
+  }
   if (isOverdue(item)) {
     const days = Math.abs(daysUntil(item.due));
     if (days > 30) return { cls: "past", text: `${days}d ago` };
@@ -142,7 +161,7 @@ function visibleItems() {
   let items = [...state.assignments];
   switch (state.filter) {
     case "overdue":
-      items = items.filter((i) => isRecentOverdue(i) && !isDone(i));
+      items = items.filter(needsAttention);
       items.sort((a, b) => new Date(a.due) - new Date(b.due));
       break;
     case "week":
@@ -159,7 +178,7 @@ function visibleItems() {
     case "done":
       items = items
         .filter(isDone)
-        .sort((a, b) => new Date(state.done[b.uid]) - new Date(state.done[a.uid]));
+        .sort((a, b) => new Date(doneDate(b) || 0) - new Date(doneDate(a) || 0));
       break;
     case "all":
       items.sort((a, b) => new Date(b.due) - new Date(a.due));
@@ -262,7 +281,7 @@ function renderSchedule() {
 function renderStats() {
   const now = Date.now();
   const week = now + 7 * 86_400_000;
-  const overdue = state.assignments.filter((i) => isRecentOverdue(i) && !isDone(i)).length;
+  const overdue = state.assignments.filter(needsAttention).length;
   const weekCount = state.assignments.filter((i) => {
     const t = new Date(i.due).getTime();
     return t >= now && t <= week && !isDone(i);
@@ -310,10 +329,17 @@ function renderList() {
     due.textContent = `Due ${fmtDue(item)}`;
     meta.append(course, due);
     if (done) {
-      const doneAt = document.createElement("span");
-      doneAt.className = "done-at";
-      doneAt.textContent = `Marked done ${new Date(state.done[item.uid]).toLocaleDateString("en-PH", { month: "short", day: "numeric" })}`;
-      meta.append(doneAt);
+      const status = document.createElement("span");
+      status.className = "done-at";
+      if (submittedInElms(item) && !state.done[item.uid]) {
+        status.textContent = "Submitted in eLMS";
+      } else {
+        const when = doneDate(item);
+        status.textContent = when
+          ? `Marked done ${new Date(when).toLocaleDateString("en-PH", { month: "short", day: "numeric" })}`
+          : "Marked done";
+      }
+      meta.append(status);
     }
     body.append(title, meta);
 
@@ -358,6 +384,11 @@ function renderStatus() {
     ? new Date(state.termEnd).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })
     : "—";
   els.lastChecked.textContent = state.lastPoll ? `Checked ${fmtRelative(state.lastPoll)}` : "Checking eLMS…";
+  if (els.listNote) {
+    els.listNote.textContent = state.submittedAt
+      ? `Submission status from an eLMS snapshot checked ${new Date(state.submittedAt).toLocaleDateString("en-PH", { month: "short", day: "numeric" })}. Tap the check to override.`
+      : "Tap the check to mark work you have already submitted.";
+  }
 }
 
 function renderTopic() {
@@ -429,8 +460,22 @@ async function loadSchedule() {
   }
 }
 
+// Submission status snapshot from eLMS, keyed by assignment uid.
+async function loadSubmitted() {
+  try {
+    const res = await fetch(`submitted.json?t=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) throw new Error("submission snapshot unavailable");
+    const data = await res.json();
+    state.submitted = data.items || {};
+    state.submittedAt = data.checkedAt || null;
+  } catch {
+    state.submitted = {};
+    state.submittedAt = null;
+  }
+}
+
 async function load() {
-  await loadSchedule();
+  await Promise.all([loadSchedule(), loadSubmitted()]);
   if (IS_LOCAL) {
     try {
       await loadLocal();

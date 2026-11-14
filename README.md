@@ -34,13 +34,23 @@ The site appears at `https://<user>.github.io/<repo>/`.
 4. Class reminders fire 3 hours before each session (`CLASS_LEAD_MINUTES`
    repository variable to change, default `180`).
 
+## Submission status
+
+The eLMS iCal feed publishes due dates only. To stop showing submitted work as
+overdue, `public/submitted.json` holds a snapshot of the **Submitted** column
+from `elms.sti.edu/student_assignments/list/<class id>`, keyed by assignment
+uid. Anything marked `"submitted": true` is treated as done automatically.
+
+The snapshot is a point-in-time check (see `checkedAt`), not a live sync — the
+GitHub poller cannot log in to eLMS. Re-scrape and update the file when new
+work is submitted, or just tap the check on the row.
+
 ## Marking work done
 
-The eLMS feed publishes due dates only, so the app cannot know whether an
-assignment was submitted. Tap the check on any row to hide it from Upcoming
-and Overdue and clear it from the overdue count. Marks are stored in that
-browser only (`localStorage`), and the **Done** tab lists them so you can
-undo.
+Tap the check on any row to override the snapshot. Overrides are stored in that
+browser only (`localStorage`) and take priority over `submitted.json`; the
+**Done** tab lists everything so you can undo. The **Clear past** button marks
+every remaining past-due row as done in one click.
 
 ## Local development
 
