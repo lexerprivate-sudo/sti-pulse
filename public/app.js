@@ -275,7 +275,7 @@ async function load() {
 }
 
 function startEvents() {
-  if (state.staticMode) return;
+  if (!IS_LOCAL) return;
   const source = new EventSource("/api/events");
   source.addEventListener("message", (event) => {
     let msg;
