@@ -10,7 +10,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icon-192.png" />
-    <link rel="stylesheet" href="style.css?v=15" />
+    <link rel="stylesheet" href="style.css?v=16" />
   </head>
   <body>
     <div class="glow" aria-hidden="true"></div>
@@ -162,6 +162,11 @@
       </aside>
     </main>
 
-    <script src="app.js?v=15" type="module"></script>
+    <div id="update-toast" class="update-toast" hidden>
+    <span>A new version of STI Pulse is ready.</span>
+    <button id="update-reload" type="button" class="btn tiny">Reload</button>
+  </div>
+
+  <script src="app.js?v=16" type="module"></script>
   </body>
 </html>

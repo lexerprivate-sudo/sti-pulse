@@ -79,6 +79,8 @@ const els = {
   ntfyLink: $("ntfy-link"),
   installBtn: $("install-btn"),
   installHint: $("install-hint"),
+  updateToast: $("update-toast"),
+  updateReload: $("update-reload"),
   settingsForm: $("settings-form"),
   settingsMsg: $("settings-msg"),
   digest: $("digest"),
@@ -680,9 +682,31 @@ window.addEventListener("beforeinstallprompt", (event) => {
 });
 
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("sw.js").catch(() => {});
+  window.addEventListener("load", async () => {
+    try {
+      const reg = await navigator.serviceWorker.register("sw.js");
+      const notify = () => {
+        if (els.updateToast) els.updateToast.classList.add("show");
+        els.updateToast?.removeAttribute("hidden");
+      };
+      if (reg.waiting) notify();
+      reg.addEventListener("updatefound", () => {
+        const installing = reg.installing;
+        if (!installing) return;
+        installing.addEventListener("statechange", () => {
+          if (installing.state === "installed" && navigator.serviceWorker.controller) notify();
+        });
+      });
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (els.updateToast?.classList.contains("show")) window.location.reload();
+      });
+    } catch {
+      /* ignore */
+    }
   });
+  if (els.updateReload) {
+    els.updateReload.addEventListener("click", () => window.location.reload());
+  }
 }
 
 if (window.matchMedia("(display-mode: standalone)").matches) {
