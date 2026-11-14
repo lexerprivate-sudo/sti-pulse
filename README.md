@@ -1,0 +1,49 @@
+# STI Pulse
+
+A small, installable dashboard that watches the STI eLMS calendar feed and
+pushes a notification when a teacher posts a new assignment.
+
+- **No password is stored.** It reads the tokenized iCal feed from eLMS.
+- **Runs without your PC on** when deployed to GitHub (Actions + Pages).
+- **Phone + desktop alerts** through [ntfy](https://ntfy.sh) (free app).
+- **Installable PWA** on Android, iPhone, Windows and macOS.
+
+## How it works
+
+```
+eLMS iCal feed ──> poller every 15 min ──> public/data.json ──> GitHub Pages (PWA)
+                                   └────> ntfy.sh topic ────> phone / desktop push
+```
+
+## One-time setup
+
+1. Create a GitHub repository and push this folder.
+2. Add two repository secrets (Settings → Secrets and variables → Actions):
+   - `FEED_URL` — the eLMS iCal URL (Calendar → Share).
+   - `NTFY_TOPIC` — a long random topic such as `sti-lexer-9c41d7b28e5f0a63`.
+3. Enable Pages: Settings → Pages → Source: **GitHub Actions**.
+4. Run the **Poll eLMS** workflow once (Actions → Poll eLMS → Run workflow).
+
+The site appears at `https://<user>.github.io/<repo>/`.
+
+## Get alerts
+
+1. Install **ntfy** on your phone and/or desktop.
+2. Subscribe to the same `NTFY_TOPIC`.
+3. New-assignment pushes arrive even when the dashboard is closed.
+
+## Local development
+
+```bash
+node server.js
+```
+
+Open <http://localhost:3030>. The local server reads `data/config.json`
+(created on first run) and polls every 10 minutes. It does not use GitHub.
+
+## Privacy
+
+The feed URL is a bearer token: anyone with it can read your assignment
+calendar. Keep it in a repository secret. `public/data.json` contains only
+assignment titles, due dates and course names — no grades, no student ID.
+The ntfy topic is public to anyone who knows it, so keep it private too.

@@ -1,0 +1,7 @@
+{
+  "feedUrl": "PASTE_YOUR_ELMS_ICAL_FEED_URL_HERE",
+  "ntfyTopic": "sti-pulse-CHANGE-ME",
+  "pollMinutes": 10,
+  "dailyDigest": true,
+  "port": 3030
+}
