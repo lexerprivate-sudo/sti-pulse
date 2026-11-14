@@ -1,0 +1,29 @@
+{
+  "term": "SY 2026-2027 · 1st Term",
+  "days": {
+    "0": [],
+    "1": [
+      { "from": "13:00", "to": "15:00", "course": "PE / PATHFIT 1", "room": "GYM04" },
+      { "from": "16:00", "to": "19:00", "course": "NSTP 1", "room": "Rm 213" }
+    ],
+    "2": [
+      { "from": "13:00", "to": "15:00", "course": "COMPROG 1", "room": "Rm 602" },
+      { "from": "16:00", "to": "19:00", "course": "COMPROG 1 — lab", "room": "LAB305" }
+    ],
+    "3": [
+      { "from": "15:00", "to": "18:00", "course": "Purposive Communication", "room": "Rm 501" },
+      { "from": "18:00", "to": "19:00", "course": "Euthenics 1", "room": "Rm 501" }
+    ],
+    "4": [
+      { "from": "18:00", "to": "21:00", "course": "The Contemporary World", "room": "Rm 404" }
+    ],
+    "5": [
+      { "from": "15:00", "to": "17:00", "course": "Intro to Computing", "room": "Rm 213" },
+      { "from": "17:30", "to": "19:00", "course": "Intro to Computing — lab", "room": "LAB303" }
+    ],
+    "6": [
+      { "from": "13:30", "to": "16:30", "course": "Understanding the Self", "room": "Rm 501" },
+      { "from": "16:30", "to": "19:30", "course": "Philippine Popular Culture", "room": "Rm 501" }
+    ]
+  }
+}

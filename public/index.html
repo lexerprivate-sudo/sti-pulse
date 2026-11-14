@@ -10,7 +10,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icon-192.png" />
-    <link rel="stylesheet" href="style.css?v=7" />
+    <link rel="stylesheet" href="style.css?v=10" />
   </head>
   <body>
     <div class="glow" aria-hidden="true"></div>
@@ -66,6 +66,7 @@
             <button class="tab" data-filter="overdue" role="tab" aria-selected="false">Overdue</button>
             <button class="tab" data-filter="week" role="tab" aria-selected="false">Next 7 days</button>
             <button class="tab" data-filter="new" role="tab" aria-selected="false">New</button>
+            <button class="tab" data-filter="done" role="tab" aria-selected="false">Done</button>
             <button class="tab" data-filter="all" role="tab" aria-selected="false">All</button>
           </div>
           <button class="btn tiny ghost" id="ack-btn" type="button">Mark all seen</button>
@@ -75,13 +76,26 @@
           <span id="list-title">Upcoming deadlines</span>
           <span class="muted" id="last-checked">Checking eLMS…</span>
         </div>
-        <p class="hint tiny list-note">The eLMS feed publishes due dates only. Submission status and scores still live in eLMS.</p>
-        <div id="assignment-list" class="assignment-list" aria-live="polite"></div>
-        <div id="empty" class="empty" hidden>
-          <div class="empty-icon" aria-hidden="true">✓</div>
-          <h2>Nothing here</h2>
-          <p>No assignments match this filter. New posts will appear automatically.</p>
+        <p class="hint tiny list-note">Tap the check to mark work you have already submitted. eLMS publishes due dates only, so submission status is not available.</p>
+        <div class="list-scroll">
+          <div id="assignment-list" class="assignment-list" aria-live="polite"></div>
+          <div id="empty" class="empty" hidden>
+            <div class="empty-icon" aria-hidden="true">✓</div>
+            <h2>Nothing here</h2>
+            <p>No assignments match this filter. New posts will appear automatically.</p>
+          </div>
         </div>
+
+        <article class="panel connection">
+          <dl class="facts">
+            <div><dt>Source</dt><dd id="feed-host">—</dd></div>
+            <div><dt>Last check</dt><dd id="feed-last">—</dd></div>
+            <div><dt>Next check</dt><dd id="feed-next">—</dd></div>
+            <div><dt>Term ends</dt><dd id="term-end">—</dd></div>
+          </dl>
+          <p class="hint tiny conn-note">Live eLMS feed · no password stored</p>
+          <p class="error" id="feed-error" hidden></p>
+        </article>
       </section>
 
       <aside class="sidebar">
@@ -89,18 +103,6 @@
           <h2>Class schedule</h2>
           <p class="next-class" id="next-class">—</p>
           <ol class="week" id="week"></ol>
-        </article>
-
-        <article class="panel">
-          <h2>Connection</h2>
-          <dl class="facts">
-            <div><dt>Source</dt><dd id="feed-host">—</dd></div>
-            <div><dt>Last check</dt><dd id="feed-last">—</dd></div>
-            <div><dt>Next check</dt><dd id="feed-next">—</dd></div>
-            <div><dt>Term ends</dt><dd id="term-end">—</dd></div>
-          </dl>
-          <p class="error" id="feed-error" hidden></p>
-          <p class="hint">This reads the live iCal feed from eLMS. No password is stored.</p>
         </article>
 
         <article class="panel highlight">
@@ -118,7 +120,7 @@
             <a class="btn small" id="ntfy-link" href="https://ntfy.sh" target="_blank" rel="noopener">Open ntfy</a>
             <button class="btn small ghost" id="test-notify" type="button">Send test</button>
           </div>
-          <p class="hint tiny">Android, iPhone, Windows, macOS and Linux are supported. Keep the topic private — anyone with it can read alerts.</p>
+          <p class="hint tiny">Keep the topic private. Class reminders arrive 3 hours before each session.</p>
         </article>
 
         <article class="panel">
@@ -158,6 +160,6 @@
       </aside>
     </main>
 
-    <script src="app.js?v=7" type="module"></script>
+    <script src="app.js?v=10" type="module"></script>
   </body>
 </html>

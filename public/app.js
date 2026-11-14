@@ -1,5 +1,7 @@
 const $ = (id) => document.getElementById(id);
 
+const DONE_KEY = "sti-done-v1";
+
 const state = {
   assignments: [],
   lastPoll: null,
@@ -10,7 +12,34 @@ const state = {
   termEnd: null,
   ntfyTopic: localStorage.getItem("sti-ntfy-topic") || "",
   pollMinutes: 10,
+  done: loadDone(),
 };
+
+function loadDone() {
+  try {
+    return JSON.parse(localStorage.getItem(DONE_KEY) || "{}") || {};
+  } catch {
+    return {};
+  }
+}
+
+function saveDone() {
+  try {
+    localStorage.setItem(DONE_KEY, JSON.stringify(state.done));
+  } catch {
+    /* storage full or blocked; keep the in-memory value */
+  }
+}
+
+function isDone(item) {
+  return Boolean(state.done[item.uid]);
+}
+
+function toggleDone(item) {
+  if (state.done[item.uid]) delete state.done[item.uid];
+  else state.done[item.uid] = new Date().toISOString();
+  saveDone();
+}
 
 const els = {
   list: $("assignment-list"),
@@ -43,37 +72,16 @@ const IS_LOCAL = ["localhost", "127.0.0.1"].includes(location.hostname);
 
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-// Weekly class schedule for SY 2026-2027, 1st term.
-const SCHEDULE = {
-  1: [
-    { from: "13:00", to: "15:00", course: "PE / PATHFIT 1", room: "GYM04" },
-    { from: "16:00", to: "19:00", course: "NSTP 1", room: "Rm 213" },
-  ],
-  2: [
-    { from: "13:00", to: "15:00", course: "COMPROG 1", room: "Rm 602" },
-    { from: "16:00", to: "19:00", course: "COMPROG 1 — lab", room: "LAB305" },
-  ],
-  3: [
-    { from: "15:00", to: "18:00", course: "Purposive Communication", room: "Rm 501" },
-    { from: "18:00", to: "19:00", course: "Euthenics 1", room: "Rm 501" },
-  ],
-  4: [{ from: "18:00", to: "21:00", course: "The Contemporary World", room: "Rm 404" }],
-  5: [
-    { from: "15:00", to: "17:00", course: "Intro to Computing", room: "Rm 213" },
-    { from: "17:30", to: "19:00", course: "Intro to Computing — lab", room: "LAB303" },
-  ],
-  6: [
-    { from: "13:30", to: "16:30", course: "Understanding the Self", room: "Rm 501" },
-    { from: "16:30", to: "19:30", course: "Philippine Popular Culture", room: "Rm 501" },
-  ],
-  0: [],
-};
+// Weekly class schedule, loaded from schedule.json (shared with the poller).
+let SCHEDULE = {};
+
 
 const FILTER_TITLES = {
   upcoming: "Upcoming deadlines",
   overdue: "Overdue work",
   week: "Due in the next 7 days",
   new: "New since your last check",
+  done: "Marked as done",
   all: "All tracked assignments",
 };
 
@@ -111,6 +119,7 @@ function fmtRelative(iso) {
 }
 
 function badgeFor(item) {
+  if (isDone(item)) return { cls: "done", text: "Done" };
   if (isOverdue(item)) {
     const days = Math.abs(daysUntil(item.due));
     return { cls: "overdue", text: days <= 1 ? "Overdue" : `${days}d late` };
@@ -132,23 +141,30 @@ function visibleItems() {
   let items = [...state.assignments];
   switch (state.filter) {
     case "overdue":
-      items = items.filter(isRecentOverdue);
+      items = items.filter((i) => isRecentOverdue(i) && !isDone(i));
       items.sort((a, b) => new Date(a.due) - new Date(b.due));
       break;
     case "week":
       items = items.filter((i) => {
         const t = new Date(i.due).getTime();
-        return t >= now && t <= week;
+        return t >= now && t <= week && !isDone(i);
       });
       break;
     case "new":
-      items = items.filter(isNew).sort((a, b) => new Date(b.firstSeen) - new Date(a.firstSeen));
+      items = items
+        .filter((i) => isNew(i) && !isDone(i))
+        .sort((a, b) => new Date(b.firstSeen) - new Date(a.firstSeen));
+      break;
+    case "done":
+      items = items
+        .filter(isDone)
+        .sort((a, b) => new Date(state.done[b.uid]) - new Date(state.done[a.uid]));
       break;
     case "all":
       items.sort((a, b) => new Date(b.due) - new Date(a.due));
       break;
     default:
-      items = items.filter((i) => new Date(i.due).getTime() >= now - 86_400_000);
+      items = items.filter((i) => new Date(i.due).getTime() >= now - 86_400_000 && !isDone(i));
       items.sort((a, b) => new Date(a.due) - new Date(b.due));
   }
   return items;
@@ -209,12 +225,15 @@ function renderSchedule() {
     head.textContent = DAY_NAMES[day].toUpperCase().slice(0, 3) + (day === today ? " · TODAY" : "");
     li.append(head);
 
+    const classesWrap = document.createElement("div");
+    classesWrap.className = "classes";
+
     const classes = SCHEDULE[day] || [];
     if (!classes.length) {
       const none = document.createElement("div");
       none.className = "none";
       none.textContent = "Free day";
-      li.append(none);
+      classesWrap.append(none);
     } else {
       for (const item of classes) {
         const row = document.createElement("div");
@@ -225,14 +244,15 @@ function renderSchedule() {
         const title = document.createElement("span");
         title.className = "title";
         title.textContent = item.course;
-        title.title = item.course;
+        title.title = `${item.course} · ${item.room}`;
         const room = document.createElement("span");
         room.className = "room";
         room.textContent = item.room;
         row.append(time, title, room);
-        li.append(row);
+        classesWrap.append(row);
       }
     }
+    li.append(classesWrap);
     frag.append(li);
   }
   els.week.replaceChildren(frag);
@@ -241,16 +261,17 @@ function renderSchedule() {
 function renderStats() {
   const now = Date.now();
   const week = now + 7 * 86_400_000;
-  const overdue = state.assignments.filter(isRecentOverdue).length;
+  const overdue = state.assignments.filter((i) => isRecentOverdue(i) && !isDone(i)).length;
   const weekCount = state.assignments.filter((i) => {
     const t = new Date(i.due).getTime();
-    return t >= now && t <= week;
+    return t >= now && t <= week && !isDone(i);
   }).length;
-  const newCount = state.assignments.filter(isNew).length;
+  const newCount = state.assignments.filter((i) => isNew(i) && !isDone(i)).length;
+  const total = state.assignments.length;
   $("stat-overdue").textContent = overdue;
   $("stat-week").textContent = weekCount;
   $("stat-new").textContent = newCount;
-  $("stat-total").textContent = state.assignments.length;
+  $("stat-total").textContent = total;
 }
 
 function renderList() {
@@ -266,9 +287,10 @@ function renderList() {
 
   const frag = document.createDocumentFragment();
   for (const item of items) {
+    const done = isDone(item);
     const badge = badgeFor(item);
     const card = document.createElement("article");
-    card.className = `card ${badge.cls} ${isNew(item) ? "new" : ""}`;
+    card.className = `card ${badge.cls} ${isNew(item) && !done ? "new" : ""} ${done ? "done" : ""}`;
     card.style.animationDelay = `${Math.min(items.indexOf(item), 8) * 25}ms`;
 
     const badgeEl = document.createElement("span");
@@ -286,14 +308,33 @@ function renderList() {
     const due = document.createElement("span");
     due.textContent = `Due ${fmtDue(item)}`;
     meta.append(course, due);
+    if (done) {
+      const doneAt = document.createElement("span");
+      doneAt.className = "done-at";
+      doneAt.textContent = `Marked done ${new Date(state.done[item.uid]).toLocaleDateString("en-PH", { month: "short", day: "numeric" })}`;
+      meta.append(doneAt);
+    }
     body.append(title, meta);
 
     const flag = document.createElement("span");
     flag.className = "new-flag";
     flag.textContent = "NEW";
-    flag.style.visibility = isNew(item) ? "visible" : "hidden";
+    flag.style.visibility = isNew(item) && !done ? "visible" : "hidden";
 
-    card.append(badgeEl, body, flag);
+    const check = document.createElement("button");
+    check.type = "button";
+    check.className = `done-btn${done ? " on" : ""}`;
+    check.title = done ? "Mark as not done" : "Mark as done";
+    check.setAttribute("aria-label", `${done ? "Unmark" : "Mark"} ${item.title} as ${done ? "not done" : "done"}`);
+    check.setAttribute("aria-pressed", done ? "true" : "false");
+    check.innerHTML =
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.5l5 5L19.5 6.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    check.addEventListener("click", () => {
+      toggleDone(item);
+      renderAll();
+    });
+
+    card.append(badgeEl, body, flag, check);
     frag.append(card);
   }
   els.list.append(frag);
@@ -376,7 +417,19 @@ async function loadStatic() {
   document.querySelector(".settings")?.remove();
 }
 
+async function loadSchedule() {
+  try {
+    const res = await fetch(`schedule.json?t=${Date.now()}`, { cache: "no-store" });
+    if (!res.ok) throw new Error("schedule unavailable");
+    const data = await res.json();
+    SCHEDULE = data.days || {};
+  } catch {
+    /* keep whatever schedule is already loaded */
+  }
+}
+
 async function load() {
+  await loadSchedule();
   if (IS_LOCAL) {
     try {
       await loadLocal();

@@ -190,6 +190,58 @@ if (state.lastDigestDate !== pht.dateKey && pht.hour === 8) {
   writeJson(statePath, state);
 }
 
+// Class reminders: one push per class, LEAD minutes before it starts (PHT).
+const schedule = readJson(path.join(root, "public", "schedule.json"), { days: {} });
+const CLASS_LEAD_MINUTES = Number(process.env.CLASS_LEAD_MINUTES || 180);
+state.classNotified ||= {};
+
+for (const key of Object.keys(state.classNotified)) {
+  if (key.slice(0, 10) < phtDay(now - 2 * 86_400_000)) {
+    delete state.classNotified[key];
+    seenChanged = true;
+  }
+}
+
+function fmtClock(hhmm) {
+  const [h, m] = hhmm.split(":").map(Number);
+  const suffix = h >= 12 ? "PM" : "AM";
+  const hour = h % 12 === 0 ? 12 : h % 12;
+  return `${hour}:${String(m).padStart(2, "0")} ${suffix}`;
+}
+
+const leadMs = CLASS_LEAD_MINUTES * 60_000;
+const reminders = [];
+const nowPht = new Date(now + PHT_OFFSET);
+
+for (let offset = 0; offset < 2; offset += 1) {
+  const day = new Date(nowPht.getTime() + offset * 86_400_000);
+  const keyDate = day.toISOString().slice(0, 10);
+  for (const cls of schedule.days?.[day.getUTCDay()] || []) {
+    const [h, m] = cls.from.split(":").map(Number);
+    const startUtc = Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), h - 8, m, 0, 0);
+    const key = `${keyDate}|${cls.course}|${cls.from}`;
+    if (now >= startUtc - leadMs && now < startUtc && !state.classNotified[key]) {
+      state.classNotified[key] = new Date(now).toISOString();
+      seenChanged = true;
+      reminders.push({ cls, startUtc });
+    }
+  }
+}
+
+writeJson(statePath, state);
+
+if (reminders.length) {
+  for (const { cls, startUtc } of reminders) {
+    const minutes = Math.max(1, Math.round((startUtc - now) / 60_000));
+    const label = minutes >= 60 ? `${Math.round(minutes / 60)} hr${minutes >= 120 ? "s" : ""}` : `${minutes} min`;
+    await ntfy({
+      title: `Class in ${label}`,
+      body: `${cls.course}\n${fmtClock(cls.from)} to ${fmtClock(cls.to)}\n${cls.room}`,
+      tags: "school,alarm_clock",
+    });
+  }
+}
+
 // Only commit data/state.json when something meaningful changed, so the
 // repository does not gain a commit every 15 minutes.
 if (process.env.GITHUB_ENV) {

@@ -31,6 +31,16 @@ The site appears at `https://<user>.github.io/<repo>/`.
 1. Install **ntfy** on your phone and/or desktop.
 2. Subscribe to the same `NTFY_TOPIC`.
 3. New-assignment pushes arrive even when the dashboard is closed.
+4. Class reminders fire 3 hours before each session (`CLASS_LEAD_MINUTES`
+   repository variable to change, default `180`).
+
+## Marking work done
+
+The eLMS feed publishes due dates only, so the app cannot know whether an
+assignment was submitted. Tap the check on any row to hide it from Upcoming
+and Overdue and clear it from the overdue count. Marks are stored in that
+browser only (`localStorage`), and the **Done** tab lists them so you can
+undo.
 
 ## Local development
 

@@ -1,5 +1,5 @@
-const CACHE = "sti-pulse-v7";
-const SHELL = ["./", "style.css", "app.js", "manifest.webmanifest", "icon.svg", "icon-192.png"];
+const CACHE = "sti-pulse-v10";
+const SHELL = ["./", "style.css", "app.js", "manifest.webmanifest", "schedule.json", "icon.svg", "icon-192.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
