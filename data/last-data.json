@@ -1,0 +1,257 @@
+{
+  "lastPoll": "2026-11-14T17:06:41.359Z",
+  "lastError": null,
+  "lastAck": 1794671069472,
+  "termEnd": "2026-12-12T23:59:00+08:00",
+  "generatedAt": "2026-11-14T17:06:41.359Z",
+  "assignments": [
+    {
+      "uid": "AssignmentEvent-59341833",
+      "title": "PRELIM - TASK PERFORMANCE 1",
+      "due": "2026-08-04T23:59:00+08:00",
+      "allDay": false,
+      "course": "Computer Programming 1",
+      "firstSeen": "2026-11-14T15:36:08.863Z"
+    },
+    {
+      "uid": "AssignmentEvent-58569116",
+      "title": "01 Laboratory Activity 1 - ARG",
+      "due": "2026-08-13T23:59:00+08:00",
+      "allDay": false,
+      "course": "Computer Programming 1",
+      "firstSeen": "2026-11-14T15:36:08.863Z"
+    },
+    {
+      "uid": "AssignmentEvent-59329513",
+      "title": "COMPROG 1 - PRELIM QUIZ 1",
+      "due": "2026-08-18T18:50:00+08:00",
+      "allDay": false,
+      "course": "Computer Programming 1",
+      "firstSeen": "2026-11-14T15:36:08.863Z"
+    },
+    {
+      "uid": "AssignmentEvent-58569119",
+      "title": "02 Performance Task 1 - ARG",
+      "due": "2026-08-19T23:59:00+08:00",
+      "allDay": false,
+      "course": "Computer Programming 1",
+      "firstSeen": "2026-11-14T15:36:08.863Z"
+    },
+    {
+      "uid": "AssignmentEvent-59472923",
+      "title": "ACTIVITY 1 - COMMUNITY PROJECT PROPOSAL",
+      "due": "2026-08-25T23:59:00+08:00",
+      "allDay": true,
+      "course": "NSTP 1",
+      "firstSeen": "2026-11-14T15:36:08.863Z"
+    },
+    {
+      "uid": "AssignmentEvent-59432692",
+      "title": "Prelim Quiz 1",
+      "due": "2026-08-29T21:00:00+08:00",
+      "allDay": false,
+      "course": "Purposive Communication",
+      "firstSeen": "2026-11-14T15:36:08.863Z"
+    },
+    {
+      "uid": "AssignmentEvent-58569118",
+      "title": "02 Laboratory Exercise 1 - ARG",
+      "due": "2026-09-01T19:00:00+08:00",
+      "allDay": false,
+      "course": "Computer Programming 1",
+      "firstSeen": "2026-11-14T15:36:08.863Z"
+    },
+    {
+      "uid": "AssignmentEvent-59472470",
+      "title": "Prelim Quiz 2",
+      "due": "2026-09-03T23:00:00+08:00",
+      "allDay": false,
+      "course": "Purposive Communication",
+      "firstSeen": "2026-11-14T15:36:08.863Z"
+    },
+    {
+      "uid": "AssignmentEvent-59719718",
+      "title": "COMMUNITY PROJECT PROPOSAL PRESENTATION",
+      "due": "2026-09-09T19:00:00+08:00",
+      "allDay": false,
+      "course": "NSTP 1",
+      "firstSeen": "2026-11-14T15:36:08.863Z"
+    },
+    {
+      "uid": "AssignmentEvent-58569150",
+      "title": "01 Laboratory Exercise 1 - ARG",
+      "due": "2026-09-11T19:00:00+08:00",
+      "allDay": false,
+      "course": "Introduction to Computing",
+      "firstSeen": "2026-11-14T15:36:08.863Z"
+    },
+    {
+      "uid": "AssignmentEvent-58569148",
+      "title": "01 Activity 1",
+      "due": "2026-09-11T23:59:00+08:00",
+      "allDay": true,
+      "course": "Introduction to Computing",
+      "firstSeen": "2026-11-14T15:36:08.863Z"
+    },
+    {
+      "uid": "AssignmentEvent-58569149",
+      "title": "01 Laboratory Activity 1 - ARG",
+      "due": "2026-09-11T23:59:00+08:00",
+      "allDay": true,
+      "course": "Introduction to Computing",
+      "firstSeen": "2026-11-14T15:36:08.863Z"
+    },
+    {
+      "uid": "AssignmentEvent-58569153",
+      "title": "02 eLMS Quiz 1",
+      "due": "2026-09-11T23:59:00+08:00",
+      "allDay": true,
+      "course": "Introduction to Computing",
+      "firstSeen": "2026-11-14T15:36:08.863Z"
+    },
+    {
+      "uid": "AssignmentEvent-58569155",
+      "title": "02 Performance Task - ARG",
+      "due": "2026-09-11T23:59:00+08:00",
+      "allDay": true,
+      "course": "Introduction to Computing",
+      "firstSeen": "2026-11-14T15:36:08.863Z"
+    },
+    {
+      "uid": "AssignmentEvent-59932531",
+      "title": "COMPROG 1 - MIDTERM QUIZ 1",
+      "due": "2026-09-22T17:20:00+08:00",
+      "allDay": false,
+      "course": "Computer Programming 1",
+      "firstSeen": "2026-11-14T15:36:08.863Z"
+    },
+    {
+      "uid": "AssignmentEvent-58569121",
+      "title": "03 Laboratory Exercise 1 - ARG",
+      "due": "2026-09-22T23:59:00+08:00",
+      "allDay": true,
+      "course": "Computer Programming 1",
+      "firstSeen": "2026-11-14T15:36:08.863Z"
+    },
+    {
+      "uid": "AssignmentEvent-59964827",
+      "title": "SELF INTRODUCTION",
+      "due": "2026-09-30T23:59:00+08:00",
+      "allDay": true,
+      "course": "Euthenics 1",
+      "firstSeen": "2026-11-14T15:36:08.863Z"
+    },
+    {
+      "uid": "AssignmentEvent-58569125",
+      "title": "04 Performance Task 1 - ARG",
+      "due": "2026-10-04T23:59:00+08:00",
+      "allDay": true,
+      "course": "Computer Programming 1",
+      "firstSeen": "2026-11-14T15:36:08.863Z"
+    },
+    {
+      "uid": "AssignmentEvent-59976330",
+      "title": "COMPROG 1 - MIDTERM QUIZ 2",
+      "due": "2026-10-04T23:59:00+08:00",
+      "allDay": true,
+      "course": "Computer Programming 1",
+      "firstSeen": "2026-11-14T15:36:08.863Z"
+    },
+    {
+      "uid": "AssignmentEvent-60005987",
+      "title": "INFOGRAPHIC",
+      "due": "2026-10-08T23:59:00+08:00",
+      "allDay": true,
+      "course": "Euthenics 1",
+      "firstSeen": "2026-11-14T15:36:08.863Z"
+    },
+    {
+      "uid": "AssignmentEvent-58569158",
+      "title": "03 Activity 1",
+      "due": "2026-10-10T23:59:00+08:00",
+      "allDay": true,
+      "course": "Introduction to Computing",
+      "firstSeen": "2026-11-14T15:36:08.863Z"
+    },
+    {
+      "uid": "AssignmentEvent-58569159",
+      "title": "03 Assignment 1",
+      "due": "2026-10-10T23:59:00+08:00",
+      "allDay": true,
+      "course": "Introduction to Computing",
+      "firstSeen": "2026-11-14T15:36:08.863Z"
+    },
+    {
+      "uid": "AssignmentEvent-58569160",
+      "title": "03 Laboratory Exercise 1 - ARG",
+      "due": "2026-10-10T23:59:00+08:00",
+      "allDay": true,
+      "course": "Introduction to Computing",
+      "firstSeen": "2026-11-14T15:36:08.863Z"
+    },
+    {
+      "uid": "AssignmentEvent-58569163",
+      "title": "04 Laboratory Exercise 1 - ARG",
+      "due": "2026-10-10T23:59:00+08:00",
+      "allDay": true,
+      "course": "Introduction to Computing",
+      "firstSeen": "2026-11-14T15:36:08.863Z"
+    },
+    {
+      "uid": "AssignmentEvent-58569164",
+      "title": "04 Performance Task 1 - ARG",
+      "due": "2026-10-10T23:59:00+08:00",
+      "allDay": true,
+      "course": "Introduction to Computing",
+      "firstSeen": "2026-11-14T15:36:08.863Z"
+    },
+    {
+      "uid": "AssignmentEvent-58569127",
+      "title": "05 Laboratory Exercise 1 - ARG",
+      "due": "2026-10-28T23:59:00+08:00",
+      "allDay": true,
+      "course": "Computer Programming 1",
+      "firstSeen": "2026-11-14T15:36:08.863Z"
+    },
+    {
+      "uid": "AssignmentEvent-60261264",
+      "title": "Three Quotations I Live By",
+      "due": "2026-11-13T23:59:00+08:00",
+      "allDay": true,
+      "course": "Euthenics 1",
+      "firstSeen": "2026-11-14T15:36:08.863Z"
+    },
+    {
+      "uid": "AssignmentEvent-58569292",
+      "title": "Prelim Journal Dropbox",
+      "due": "2026-12-18T23:59:00+08:00",
+      "allDay": true,
+      "course": "Philippine Popular Culture",
+      "firstSeen": "2026-11-14T15:36:08.863Z"
+    },
+    {
+      "uid": "AssignmentEvent-58569293",
+      "title": "Midterm Journal Dropbox",
+      "due": "2026-12-18T23:59:00+08:00",
+      "allDay": true,
+      "course": "Philippine Popular Culture",
+      "firstSeen": "2026-11-14T15:36:08.863Z"
+    },
+    {
+      "uid": "AssignmentEvent-58569294",
+      "title": "Prefinal Journal Dropbox",
+      "due": "2026-12-18T23:59:00+08:00",
+      "allDay": true,
+      "course": "Philippine Popular Culture",
+      "firstSeen": "2026-11-14T15:36:08.863Z"
+    },
+    {
+      "uid": "AssignmentEvent-58569295",
+      "title": "Final Journal Dropbox",
+      "due": "2026-12-18T23:59:00+08:00",
+      "allDay": true,
+      "course": "Philippine Popular Culture",
+      "firstSeen": "2026-11-14T15:36:08.863Z"
+    }
+  ]
+}

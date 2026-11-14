@@ -10,6 +10,7 @@ import { parseAssignments, parseTermEnd } from "../src/feed.js";
 const root = process.cwd();
 const statePath = path.join(root, "data", "state.json");
 const dataPath = path.join(root, "public", "data.json");
+const lastDataPath = path.join(root, "data", "last-data.json");
 
 const FEED_URL = process.env.FEED_URL;
 const NTFY_TOPIC = process.env.NTFY_TOPIC;
@@ -109,8 +110,9 @@ const assignments = parseAssignments(feedText);
 const termEnd = parseTermEnd(feedText);
 if (!assignments.length) {
   const hasPrior = state.seen && Object.keys(state.seen).length > 0;
-  if (hasPrior) {
-    console.warn("Feed parsed but contained no assignments; treating as transient and keeping existing data.json.");
+  if (hasPrior && fs.existsSync(lastDataPath)) {
+    fs.copyFileSync(lastDataPath, dataPath);
+    console.warn("Feed parsed but contained no assignments; restored previous data.json.");
     process.exit(0);
   }
   console.error("Feed parsed but contained no assignments.");
@@ -155,6 +157,14 @@ if (!state.lastAck) state.lastAck = now;
 
 writeJson(statePath, state);
 writeJson(dataPath, {
+  lastPoll: state.lastPoll,
+  lastError: null,
+  lastAck: state.lastAck || 0,
+  termEnd: termEnd || null,
+  generatedAt: state.lastPoll,
+  assignments: enriched,
+});
+writeJson(lastDataPath, {
   lastPoll: state.lastPoll,
   lastError: null,
   lastAck: state.lastAck || 0,
