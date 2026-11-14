@@ -49,8 +49,7 @@ work is submitted, or just tap the check on the row.
 
 Tap the check on any row to override the snapshot. Overrides are stored in that
 browser only (`localStorage`) and take priority over `submitted.json`; the
-**Done** tab lists everything so you can undo. The **Clear past** button marks
-every remaining past-due row as done in one click.
+**Done** tab lists everything so you can undo.
 
 ## Local development
 

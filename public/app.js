@@ -567,27 +567,6 @@ function bind() {
 
   $("refresh-btn").addEventListener("click", refresh);
 
-  $("clear-past").addEventListener("click", () => {
-    const btn = $("clear-past");
-    const now = Date.now();
-    let cleared = 0;
-    for (const item of state.assignments) {
-      if (!isDone(item) && new Date(item.due).getTime() < now) {
-        state.done[item.uid] = new Date().toISOString();
-        cleared += 1;
-      }
-    }
-    if (!cleared) {
-      btn.textContent = "Nothing past due";
-      setTimeout(() => (btn.textContent = "Clear past"), 1800);
-      return;
-    }
-    saveDone();
-    renderAll();
-    btn.textContent = `Cleared ${cleared}`;
-    setTimeout(() => (btn.textContent = "Clear past"), 1800);
-  });
-
   $("ack-btn").addEventListener("click", async () => {
     if (state.staticMode) {
       state.lastAck = Date.now();
