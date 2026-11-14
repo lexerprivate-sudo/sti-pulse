@@ -1,4 +1,4 @@
-const CACHE = "sti-pulse-v4";
+const CACHE = "sti-pulse-v5";
 const SHELL = ["./", "style.css", "app.js", "manifest.webmanifest", "icon.svg", "icon-192.png"];
 
 self.addEventListener("install", (event) => {
@@ -43,8 +43,7 @@ self.addEventListener("fetch", (event) => {
 
   event.respondWith(
     caches.match(request).then((cached) => {
-      if (cached) return cached;
-      return fetch(request)
+      const network = fetch(request)
         .then((response) => {
           if (response && response.ok) {
             const copy = response.clone();
@@ -53,6 +52,7 @@ self.addEventListener("fetch", (event) => {
           return response;
         })
         .catch(() => cached);
+      return cached || network;
     })
   );
 });
