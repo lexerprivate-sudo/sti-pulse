@@ -21,6 +21,8 @@ const els = {
   statusText: $("status-text"),
   statusDot: $("status-dot"),
   feedHost: $("feed-host"),
+  nextClass: $("next-class"),
+  week: $("week"),
   feedLast: $("feed-last"),
   feedNext: $("feed-next"),
   feedError: $("feed-error"),
@@ -38,6 +40,34 @@ const els = {
 };
 
 const IS_LOCAL = ["localhost", "127.0.0.1"].includes(location.hostname);
+
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+// Weekly class schedule for SY 2026-2027, 1st term.
+const SCHEDULE = {
+  1: [
+    { from: "13:00", to: "15:00", course: "PE / PATHFIT 1", room: "GYM04" },
+    { from: "16:00", to: "19:00", course: "NSTP 1", room: "Rm 213" },
+  ],
+  2: [
+    { from: "13:00", to: "15:00", course: "COMPROG 1", room: "Rm 602" },
+    { from: "16:00", to: "19:00", course: "COMPROG 1 — lab", room: "LAB305" },
+  ],
+  3: [
+    { from: "15:00", to: "18:00", course: "Purposive Communication", room: "Rm 501" },
+    { from: "18:00", to: "19:00", course: "Euthenics 1", room: "Rm 501" },
+  ],
+  4: [{ from: "18:00", to: "21:00", course: "The Contemporary World", room: "Rm 404" }],
+  5: [
+    { from: "15:00", to: "17:00", course: "Intro to Computing", room: "Rm 213" },
+    { from: "17:30", to: "19:00", course: "Intro to Computing — lab", room: "LAB303" },
+  ],
+  6: [
+    { from: "13:30", to: "16:30", course: "Understanding the Self", room: "Rm 501" },
+    { from: "16:30", to: "19:30", course: "Philippine Popular Culture", room: "Rm 501" },
+  ],
+  0: [],
+};
 
 const FILTER_TITLES = {
   upcoming: "Upcoming deadlines",
@@ -122,6 +152,90 @@ function visibleItems() {
       items.sort((a, b) => new Date(a.due) - new Date(b.due));
   }
   return items;
+}
+
+function minutes(hhmm) {
+  const [h, m] = hhmm.split(":").map(Number);
+  return h * 60 + m;
+}
+
+function fmtClock(hhmm) {
+  const [h, m] = hhmm.split(":").map(Number);
+  return new Date(2000, 0, 1, h, m).toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" });
+}
+
+function nextClass(now = new Date()) {
+  for (let offset = 0; offset < 8; offset += 1) {
+    const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset);
+    const classes = [...(SCHEDULE[day.getDay()] || [])].sort((a, b) => minutes(a.from) - minutes(b.from));
+    for (const item of classes) {
+      const start = new Date(day);
+      start.setMinutes(minutes(item.from), 0, 0);
+      if (start.getTime() > now.getTime()) return { start, ...item };
+    }
+  }
+  return null;
+}
+
+function renderSchedule() {
+  if (!els.week) return;
+  const now = new Date();
+  const today = now.getDay();
+
+  const next = nextClass(now);
+  if (next) {
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const startOfNext = new Date(next.start.getFullYear(), next.start.getMonth(), next.start.getDate()).getTime();
+    const days = Math.round((startOfNext - startOfToday) / 86_400_000);
+    const when = days === 0 ? "Today" : days === 1 ? "Tomorrow" : DAY_NAMES[next.start.getDay()];
+    const label = document.createElement("strong");
+    label.textContent = next.course;
+    els.nextClass.replaceChildren(
+      `Next: `,
+      label,
+      ` · ${when} ${next.start.toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" })}${next.room ? ` · ${next.room}` : ""}`
+    );
+  } else {
+    els.nextClass.textContent = "No classes in the next week.";
+  }
+
+  const frag = document.createDocumentFragment();
+  for (const day of [1, 2, 3, 4, 5, 6, 0]) {
+    const li = document.createElement("li");
+    if (day === today) li.className = "today";
+
+    const head = document.createElement("div");
+    head.className = "day";
+    head.textContent = DAY_NAMES[day].toUpperCase().slice(0, 3) + (day === today ? " · TODAY" : "");
+    li.append(head);
+
+    const classes = SCHEDULE[day] || [];
+    if (!classes.length) {
+      const none = document.createElement("div");
+      none.className = "none";
+      none.textContent = "Free day";
+      li.append(none);
+    } else {
+      for (const item of classes) {
+        const row = document.createElement("div");
+        row.className = "cls";
+        const time = document.createElement("span");
+        time.className = "time";
+        time.textContent = `${fmtClock(item.from)}–${fmtClock(item.to)}`;
+        const title = document.createElement("span");
+        title.className = "title";
+        title.textContent = item.course;
+        title.title = item.course;
+        const room = document.createElement("span");
+        room.className = "room";
+        room.textContent = item.room;
+        row.append(time, title, room);
+        li.append(row);
+      }
+    }
+    frag.append(li);
+  }
+  els.week.replaceChildren(frag);
 }
 
 function renderStats() {
@@ -214,6 +328,7 @@ function renderTopic() {
 
 function renderAll() {
   renderStats();
+  renderSchedule();
   renderList();
   renderStatus();
   renderTopic();

@@ -10,7 +10,7 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icon-192.png" />
-    <link rel="stylesheet" href="style.css?v=6" />
+    <link rel="stylesheet" href="style.css?v=7" />
   </head>
   <body>
     <div class="glow" aria-hidden="true"></div>
@@ -86,6 +86,12 @@
 
       <aside class="sidebar">
         <article class="panel">
+          <h2>Class schedule</h2>
+          <p class="next-class" id="next-class">—</p>
+          <ol class="week" id="week"></ol>
+        </article>
+
+        <article class="panel">
           <h2>Connection</h2>
           <dl class="facts">
             <div><dt>Source</dt><dd id="feed-host">—</dd></div>
@@ -152,6 +158,6 @@
       </aside>
     </main>
 
-    <script src="app.js?v=6" type="module"></script>
+    <script src="app.js?v=7" type="module"></script>
   </body>
 </html>

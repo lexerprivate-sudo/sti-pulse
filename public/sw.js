@@ -1,4 +1,4 @@
-const CACHE = "sti-pulse-v6";
+const CACHE = "sti-pulse-v7";
 const SHELL = ["./", "style.css", "app.js", "manifest.webmanifest", "icon.svg", "icon-192.png"];
 
 self.addEventListener("install", (event) => {
