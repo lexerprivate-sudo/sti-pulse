@@ -117,6 +117,11 @@ for (const item of assignments) {
 
 if (state.termEnd !== termEnd) seenChanged = true;
 
+// Heartbeat: commit at least once per PHT day so GitHub never treats the
+// repository as inactive and disables the schedule.
+const phtDay = (value) => new Date(new Date(value).getTime() + PHT_OFFSET).toISOString().slice(0, 10);
+if (!state.lastPoll || phtDay(state.lastPoll) !== phtDay(now)) seenChanged = true;
+
 const enriched = assignments.map((item) => ({
   ...item,
   firstSeen: state.seen[item.uid]?.firstSeen || new Date(now).toISOString(),
