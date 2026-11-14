@@ -37,6 +37,8 @@ const els = {
   feedUrl: $("feed-url"),
 };
 
+const IS_LOCAL = ["localhost", "127.0.0.1"].includes(location.hostname);
+
 const FILTER_TITLES = {
   upcoming: "Upcoming deadlines",
   overdue: "Overdue work",
@@ -189,9 +191,11 @@ function renderStatus() {
   els.statusPill.classList.toggle("bad", Boolean(state.lastError));
   els.statusText.textContent = state.lastError ? "Feed problem" : ok ? "Connected" : "Connecting…";
   els.feedLast.textContent = state.lastPoll ? fmtRelative(state.lastPoll) : "—";
-  els.feedNext.textContent = state.lastPoll
-    ? new Date(new Date(state.lastPoll).getTime() + state.pollMinutes * 60_000).toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" })
-    : "—";
+  els.feedNext.textContent = state.staticMode
+    ? "every 15 min"
+    : state.lastPoll
+      ? new Date(new Date(state.lastPoll).getTime() + state.pollMinutes * 60_000).toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" })
+      : "—";
   els.feedError.hidden = !state.lastError;
   els.feedError.textContent = state.lastError || "";
   els.termEnd.textContent = state.termEnd
@@ -243,6 +247,11 @@ async function loadStatic() {
   state.lastPoll = data.lastPoll;
   state.lastError = data.lastError;
   state.lastAck = Number(localStorage.getItem("sti-last-ack") || 0);
+  if (!state.lastAck && state.assignments.length) {
+    const newest = Math.max(...state.assignments.map((a) => new Date(a.firstSeen).getTime()));
+    state.lastAck = newest;
+    localStorage.setItem("sti-last-ack", String(newest));
+  }
   state.staticMode = true;
   state.termEnd = data.termEnd || null;
   els.feedHost.textContent = "eLMS (via GitHub)";
@@ -253,9 +262,13 @@ async function loadStatic() {
 }
 
 async function load() {
-  try {
-    await loadLocal();
-  } catch {
+  if (IS_LOCAL) {
+    try {
+      await loadLocal();
+    } catch {
+      await loadStatic();
+    }
+  } else {
     await loadStatic();
   }
   renderAll();
@@ -362,15 +375,6 @@ function bind() {
     }
   });
 
-  $("topic-form").addEventListener("submit", (event) => {
-    event.preventDefault();
-    const value = $("topic-set").value.trim();
-    if (!value) return;
-    localStorage.setItem("sti-ntfy-topic", value);
-    state.ntfyTopic = value;
-    renderTopic();
-  });
-
   $("test-notify").addEventListener("click", async () => {
     if (state.staticMode) {
       window.open(`https://ntfy.sh/${encodeURIComponent(state.ntfyTopic)}`, "_blank", "noopener");
@@ -416,14 +420,15 @@ function bind() {
     }
   });
 
-  const morning = () => {
-    const now = new Date();
-    return now.toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" });
-  };
-  setInterval(() => {
-    if (!state.staticMode) return;
-    els.feedNext.textContent = morning();
-  }, 60_000);
+  const topicForm = $("topic-form");
+  topicForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const value = $("topic-set").value.trim();
+    if (!value) return;
+    localStorage.setItem("sti-ntfy-topic", value);
+    state.ntfyTopic = value;
+    renderTopic();
+  });
 }
 
 let deferredPrompt = null;
