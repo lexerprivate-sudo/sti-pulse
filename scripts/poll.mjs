@@ -78,21 +78,41 @@ const state = readJson(statePath, { lastPoll: null, lastAck: 0, seen: {}, lastDi
 state.seen ||= {};
 
 let feedText;
-try {
-  const res = await fetch(FEED_URL, {
-    headers: { "user-agent": "STI-Pulse/1.0 (GitHub Actions)" },
-    redirect: "follow",
-  });
-  if (!res.ok) throw new Error(`eLMS feed returned HTTP ${res.status}`);
-  feedText = await res.text();
-} catch (error) {
-  console.error("Feed fetch failed:", error.message);
+let lastFetchError = null;
+for (let attempt = 1; attempt <= 3; attempt += 1) {
+  try {
+    const res = await fetch(FEED_URL, {
+      headers: { "user-agent": "STI-Pulse/1.0 (GitHub Actions)" },
+      redirect: "follow",
+    });
+    if (!res.ok) throw new Error(`eLMS feed returned HTTP ${res.status}`);
+    feedText = await res.text();
+    lastFetchError = null;
+    break;
+  } catch (error) {
+    lastFetchError = error;
+    console.error(`Feed fetch attempt ${attempt}/3 failed:`, error.message);
+    if (attempt < 3) {
+      const until = Date.now() + 5000;
+      while (Date.now() < until) {
+        /* busy-wait; timers are unavailable in this runtime */
+      }
+    }
+  }
+}
+if (lastFetchError) {
+  console.error("Feed fetch failed:", lastFetchError.message);
   process.exit(1);
 }
 
 const assignments = parseAssignments(feedText);
 const termEnd = parseTermEnd(feedText);
 if (!assignments.length) {
+  const hasPrior = state.seen && Object.keys(state.seen).length > 0;
+  if (hasPrior) {
+    console.warn("Feed parsed but contained no assignments; treating as transient and keeping existing data.json.");
+    process.exit(0);
+  }
   console.error("Feed parsed but contained no assignments.");
   process.exit(1);
 }
