@@ -122,6 +122,7 @@ if (!assignments.length) {
 const baseline = !state.lastPoll;
 const now = Date.now();
 const fresh = [];
+const moved = [];
 let seenChanged = false;
 
 for (const item of assignments) {
@@ -132,6 +133,9 @@ for (const item of assignments) {
     if (!baseline) fresh.push(item);
   } else {
     if (existing.title !== item.title || existing.due !== item.due) seenChanged = true;
+    if (existing.due && existing.due !== item.due) {
+      moved.push({ item, oldDue: existing.due });
+    }
     existing.title = item.title;
     existing.due = item.due;
   }
@@ -198,7 +202,30 @@ if (fresh.length) {
   }
 }
 
-// Daily digest at 8 AM PHT.
+// Notify when an existing assignment's due date changes.
+if (moved.length && !baseline) {
+  if (moved.length === 1) {
+    const { item, oldDue } = moved[0];
+    await ntfy({
+      title: "Deadline moved",
+      body: `${item.title}\n${item.course}\n${formatDue(oldDue, item.allDay)} → ${formatDue(item.due, item.allDay)}`,
+      priority: "high",
+      tags: "calendar,books",
+    });
+  } else {
+    await ntfy({
+      title: `${moved.length} deadlines moved`,
+      body: moved
+        .slice(0, 8)
+        .map(({ item, oldDue }) => `- ${item.title}: ${formatDue(oldDue, item.allDay)} → ${formatDue(item.due, item.allDay)}`)
+        .join("\n"),
+      priority: "high",
+      tags: "calendar,books",
+    });
+  }
+  seenChanged = true;
+  writeJson(statePath, state);
+}
 const pht = phtParts();
 if (state.lastDigestDate !== pht.dateKey && pht.hour === 8) {
   const soon = enriched.filter((item) => {
