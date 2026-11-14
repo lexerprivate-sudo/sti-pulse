@@ -343,6 +343,13 @@ summary:focus-visible {
   gap: 12px;
 }
 
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .tabs {
   display: inline-flex;
   gap: 2px;
@@ -586,6 +593,13 @@ summary:focus-visible {
   color: #6fe3b0;
   border-color: rgba(60, 207, 145, 0.30);
   background: rgba(60, 207, 145, 0.10);
+}
+
+.badge.past {
+  color: #98a2b3;
+  border-color: var(--line-soft);
+  background: rgba(255, 255, 255, 0.03);
+  font-weight: 550;
 }
 
 .card.done {

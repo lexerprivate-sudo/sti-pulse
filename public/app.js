@@ -122,6 +122,7 @@ function badgeFor(item) {
   if (isDone(item)) return { cls: "done", text: "Done" };
   if (isOverdue(item)) {
     const days = Math.abs(daysUntil(item.due));
+    if (days > 30) return { cls: "past", text: `${days}d ago` };
     return { cls: "overdue", text: days <= 1 ? "Overdue" : `${days}d late` };
   }
   const days = daysUntil(item.due);
@@ -520,6 +521,27 @@ function bind() {
   });
 
   $("refresh-btn").addEventListener("click", refresh);
+
+  $("clear-past").addEventListener("click", () => {
+    const btn = $("clear-past");
+    const now = Date.now();
+    let cleared = 0;
+    for (const item of state.assignments) {
+      if (!isDone(item) && new Date(item.due).getTime() < now) {
+        state.done[item.uid] = new Date().toISOString();
+        cleared += 1;
+      }
+    }
+    if (!cleared) {
+      btn.textContent = "Nothing past due";
+      setTimeout(() => (btn.textContent = "Clear past"), 1800);
+      return;
+    }
+    saveDone();
+    renderAll();
+    btn.textContent = `Cleared ${cleared}`;
+    setTimeout(() => (btn.textContent = "Clear past"), 1800);
+  });
 
   $("ack-btn").addEventListener("click", async () => {
     if (state.staticMode) {
