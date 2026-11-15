@@ -58,21 +58,27 @@ function ascii(value) {
 }
 
 async function ntfy({ title, body, priority = "default", tags = "books" }) {
-  if (!NTFY_TOPIC) return;
+  if (!NTFY_TOPIC) {
+    console.warn("NTFY_TOPIC is not set — push skipped:", title);
+    return false;
+  }
   try {
     const res = await fetch(`https://ntfy.sh/${encodeURIComponent(NTFY_TOPIC)}`, {
       method: "POST",
       headers: { Title: ascii(title), Priority: priority, Tags: tags },
       body,
+      signal: AbortSignal.timeout(20_000),
     });
     console.log(`ntfy -> ${res.status}`);
+    return res.ok;
   } catch (error) {
     console.error("ntfy failed:", error.message);
+    return false;
   }
 }
 
 function daysUntil(due) {
-  return Math.ceil((new Date(due).getTime() - Date.now()) / 86_400_000);
+  return Math.floor((new Date(due).getTime() - Date.now()) / 86_400_000);
 }
 
 const state = readJson(statePath, { lastPoll: null, lastAck: 0, seen: {}, lastDigestDate: "" });
@@ -85,6 +91,7 @@ for (let attempt = 1; attempt <= 3; attempt += 1) {
     const res = await fetch(FEED_URL, {
       headers: { "user-agent": "STI-Pulse/1.0 (GitHub Actions)" },
       redirect: "follow",
+      signal: AbortSignal.timeout(30_000),
     });
     if (!res.ok) throw new Error(`eLMS feed returned HTTP ${res.status}`);
     feedText = await res.text();
@@ -94,15 +101,17 @@ for (let attempt = 1; attempt <= 3; attempt += 1) {
     lastFetchError = error;
     console.error(`Feed fetch attempt ${attempt}/3 failed:`, error.message);
     if (attempt < 3) {
-      const until = Date.now() + 5000;
-      while (Date.now() < until) {
-        /* busy-wait; timers are unavailable in this runtime */
-      }
+      await new Promise((resolve) => setTimeout(resolve, 5000));
     }
   }
 }
 if (lastFetchError) {
   console.error("Feed fetch failed:", lastFetchError.message);
+  await ntfy({
+    title: "STI Pulse: eLMS feed unreachable",
+    body: `Feed fetch failed: ${lastFetchError.message}. Dashboard data may be stale.`,
+    tags: "warning",
+  });
   process.exit(1);
 }
 
@@ -113,6 +122,11 @@ if (!assignments.length) {
   if (hasPrior && fs.existsSync(lastDataPath)) {
     fs.copyFileSync(lastDataPath, dataPath);
     console.warn("Feed parsed but contained no assignments; restored previous data.json.");
+    await ntfy({
+      title: "STI Pulse: eLMS feed empty",
+      body: "eLMS returned no assignments today; showing last known data.",
+      tags: "warning",
+    });
     process.exit(0);
   }
   console.error("Feed parsed but contained no assignments.");
@@ -124,6 +138,11 @@ const priorCount = state.seen ? Object.keys(state.seen).length : 0;
 if (priorCount > 0 && assignments.length < Math.ceil(priorCount * 0.5)) {
   if (fs.existsSync(lastDataPath)) fs.copyFileSync(lastDataPath, dataPath);
   console.warn(`Feed returned only ${assignments.length} of ~${priorCount} assignments; treating as partial and keeping previous data.`);
+  await ntfy({
+    title: "STI Pulse: eLMS feed may be partial",
+    body: `eLMS returned only ${assignments.length} of ~${priorCount} assignments; showing last known data.`,
+    tags: "warning",
+  });
   process.exit(0);
 }
 
@@ -132,6 +151,7 @@ const now = Date.now();
 const fresh = [];
 const moved = [];
 let seenChanged = false;
+let pushFailed = false;
 
 for (const item of assignments) {
   const existing = state.seen[item.uid];
@@ -167,38 +187,21 @@ state.termEnd = termEnd;
 if (baseline) state.lastAck = now;
 if (!state.lastAck) state.lastAck = now;
 
-writeJson(statePath, state);
-writeJson(dataPath, {
-  lastPoll: state.lastPoll,
-  lastError: null,
-  lastAck: state.lastAck || 0,
-  termEnd: termEnd || null,
-  generatedAt: state.lastPoll,
-  assignments: enriched,
-});
-writeJson(lastDataPath, {
-  lastPoll: state.lastPoll,
-  lastError: null,
-  lastAck: state.lastAck || 0,
-  termEnd: termEnd || null,
-  generatedAt: state.lastPoll,
-  assignments: enriched,
-});
-
 console.log(`Parsed ${assignments.length} assignments, ${fresh.length} new.`);
 
 if (fresh.length) {
   if (fresh.length === 1) {
     const item = fresh[0];
     const days = daysUntil(item.due);
-    await ntfy({
+    const ok = await ntfy({
       title: "New STI assignment",
-      body: `${item.title}\n${item.course}\nDue ${formatDue(item.due, item.allDay)}${days <= 3 ? ` (${days} day${days === 1 ? "" : "s"})` : ""}`,
-      priority: days <= 3 ? "high" : "default",
-      tags: days <= 3 ? "warning,books" : "books",
+      body: `${item.title}\n${item.course}\nDue ${formatDue(item.due, item.allDay)}${days >= 0 && days <= 3 ? ` (${days} day${days === 1 ? "" : "s"})` : ""}`,
+      priority: days >= 0 && days <= 3 ? "high" : "default",
+      tags: days >= 0 && days <= 3 ? "warning,books" : "books",
     });
+    if (!ok) pushFailed = true;
   } else {
-    await ntfy({
+    const ok = await ntfy({
       title: `${fresh.length} new STI assignments`,
       body: fresh
         .slice(0, 8)
@@ -207,6 +210,7 @@ if (fresh.length) {
       priority: "high",
       tags: "books",
     });
+    if (!ok) pushFailed = true;
   }
 }
 
@@ -214,14 +218,15 @@ if (fresh.length) {
 if (moved.length && !baseline) {
   if (moved.length === 1) {
     const { item, oldDue } = moved[0];
-    await ntfy({
+    const ok = await ntfy({
       title: "Deadline moved",
       body: `${item.title}\n${item.course}\n${formatDue(oldDue, item.allDay)} → ${formatDue(item.due, item.allDay)}`,
       priority: "high",
       tags: "calendar,books",
     });
+    if (!ok) pushFailed = true;
   } else {
-    await ntfy({
+    const ok = await ntfy({
       title: `${moved.length} deadlines moved`,
       body: moved
         .slice(0, 8)
@@ -230,12 +235,14 @@ if (moved.length && !baseline) {
       priority: "high",
       tags: "calendar,books",
     });
+    if (!ok) pushFailed = true;
   }
-  seenChanged = true;
-  writeJson(statePath, state);
+  if (!pushFailed) {
+    seenChanged = true;
+  }
 }
 const pht = phtParts();
-if (state.lastDigestDate !== pht.dateKey && pht.hour === 8) {
+if (state.lastDigestDate !== pht.dateKey && pht.hour >= 8) {
   const soon = enriched.filter((item) => {
     const days = daysUntil(item.due);
     return days >= 0 && days <= 3;
@@ -251,15 +258,15 @@ if (state.lastDigestDate !== pht.dateKey && pht.hour === 8) {
     lines.push(...soon.slice(0, 8).map((item) => `- ${item.title} (${formatDue(item.due, item.allDay)})`));
   }
   if (lines.length) {
-    await ntfy({
+    const ok = await ntfy({
       title: "STI Pulse digest",
       body: lines.join("\n"),
       tags: "alarm_clock,books",
     });
+    if (!ok) pushFailed = true;
   }
   state.lastDigestDate = pht.dateKey;
   seenChanged = true;
-  writeJson(statePath, state);
 }
 
 // Class reminders: one push per class, LEAD minutes before it starts (PHT).
@@ -293,48 +300,77 @@ for (let offset = 0; offset < 2; offset += 1) {
     const startUtc = Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate(), h - 8, m, 0, 0);
     const key = `${keyDate}|${cls.course}|${cls.from}`;
     if (now >= startUtc - leadMs && now < startUtc && !state.classNotified[key]) {
-      state.classNotified[key] = new Date(now).toISOString();
-      seenChanged = true;
-      reminders.push({ cls, startUtc });
+      reminders.push({ cls, startUtc, key });
     }
   }
 }
 
-writeJson(statePath, state);
-
 if (reminders.length) {
-  for (const { cls, startUtc } of reminders) {
+  for (const { cls, startUtc, key } of reminders) {
     const minutes = Math.max(1, Math.round((startUtc - now) / 60_000));
     const label = minutes >= 60 ? `${Math.round(minutes / 60)} hr${minutes >= 120 ? "s" : ""}` : `${minutes} min`;
-    await ntfy({
+    const ok = await ntfy({
       title: `Class in ${label}`,
       body: `${cls.course}\n${fmtClock(cls.from)} to ${fmtClock(cls.to)}\n${cls.room}`,
       tags: "school,alarm_clock",
     });
+    if (ok) {
+      state.classNotified[key] = new Date(now).toISOString();
+      seenChanged = true;
+    } else {
+      pushFailed = true;
+    }
   }
 }
 
 // Weekly nudge to re-scan eLMS submission status, since the snapshot goes stale.
 try {
   const snap = readJson(path.join(root, "public", "submitted.json"), null);
-  if (snap?.checkedAt) {
+  if (snap?.checkedAt && !Number.isNaN(new Date(snap.checkedAt).getTime())) {
     const ageDays = (Date.now() - new Date(snap.checkedAt).getTime()) / 86_400_000;
     const lastNudge = state.lastScrapeNudge ? new Date(state.lastScrapeNudge).getTime() : 0;
     const nudgeDue = Date.now() - lastNudge > 14 * 86_400_000;
     if (ageDays > 14 && nudgeDue) {
-      await ntfy({
+      const ok = await ntfy({
         title: "Re-check eLMS submission status",
         body: `Your submission snapshot is ${Math.round(ageDays)} days old. Open each class in eLMS, verify the Submitted column, and ask the assistant to refresh it.`,
         tags: "reminder,books",
       });
-      state.lastScrapeNudge = new Date(now).toISOString();
-      seenChanged = true;
-      writeJson(statePath, state);
+      if (ok) {
+        state.lastScrapeNudge = new Date(now).toISOString();
+        seenChanged = true;
+      } else {
+        pushFailed = true;
+      }
     }
   }
 } catch {
   /* non-fatal */
 }
+if (pushFailed) {
+  console.error("One or more pushes failed; exiting without committing state (will retry next run).");
+  process.exit(1);
+}
+
+// Commit state only after notifications were sent successfully.
+writeJson(statePath, state);
+writeJson(dataPath, {
+  lastPoll: state.lastPoll,
+  lastError: null,
+  lastAck: state.lastAck || 0,
+  termEnd: termEnd || null,
+  generatedAt: state.lastPoll,
+  assignments: enriched,
+});
+writeJson(lastDataPath, {
+  lastPoll: state.lastPoll,
+  lastError: null,
+  lastAck: state.lastAck || 0,
+  termEnd: termEnd || null,
+  generatedAt: state.lastPoll,
+  assignments: enriched,
+});
+
 if (process.env.GITHUB_ENV) {
   fs.appendFileSync(process.env.GITHUB_ENV, `STATE_CHANGED=${seenChanged ? "1" : "0"}\n`);
 }

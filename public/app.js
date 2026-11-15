@@ -3,8 +3,8 @@ const DONE_KEY = "sti-done-v1";
 const DATA_CACHE = "sti-data-cache";
 
 const storage = {
-  get(key) { try { return storage.get(key); } catch { return null; } },
-  set(key, value) { try { storage.set(key, value); } catch { /* full or blocked */ } },
+  get(key) { try { return localStorage.getItem(key); } catch { return null; } },
+  set(key, value) { try { localStorage.setItem(key, value); } catch { /* full or blocked */ } },
 };
 
 const els = {
@@ -82,7 +82,7 @@ function doneDate(item) {
   return null;
 }
 
-function daysUntil(due) { return Math.ceil((new Date(due).getTime() - Date.now()) / 86_400_000); }
+function daysUntil(due) { return Math.floor((new Date(due).getTime() - Date.now()) / 86_400_000); }
 function isOverdue(item) { return new Date(item.due).getTime() < Date.now(); }
 function isNew(item) { return new Date(item.firstSeen).getTime() > (state.lastAck || 0); }
 function needsAttention(item) { return isOverdue(item) && !isDone(item); }
@@ -205,7 +205,12 @@ function renderList() {
     check.setAttribute("aria-label", `${done ? "Unmark" : "Mark"} ${item.title} as ${done ? "not done" : "done"}`);
     check.dataset.uid = item.uid;
     check.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.5l5 5L19.5 6.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-    check.addEventListener("click", () => { toggleDone(item); renderAll(); els.list.querySelector(`[data-uid="${item.uid}"]`)?.focus(); });
+    check.addEventListener("click", () => {
+      toggleDone(item);
+      renderAll();
+      const btn = els.list.querySelector(`[data-uid="${CSS.escape(item.uid)}"]`);
+      (btn || els.list).focus();
+    });
 
     row.append(badgeEl, body, check);
     frag.append(row);
@@ -308,7 +313,9 @@ function renderTopic() {
   const topic = state.ntfyTopic;
   els.ntfyTopic.textContent = topic || "Not set on this device";
   els.ntfyLink.href = topic ? `https://ntfy.sh/${encodeURIComponent(topic)}` : "https://ntfy.sh";
-  els.ntfyInput.value = topic;
+  if (document.activeElement !== els.ntfyInput && document.activeElement !== $("ntfy-topic")) {
+    els.ntfyInput.value = topic;
+  }
   const copyBtn = $("copy-topic");
   if (copyBtn) copyBtn.disabled = !topic;
 }
@@ -334,6 +341,7 @@ async function loadSubmitted() {
 
 async function loadData() {
   let data;
+  let fromCache = false;
   try {
     const res = await fetch(`data.json?t=${Date.now()}`, { cache: "no-store" });
     const text = await res.text();
@@ -345,17 +353,17 @@ async function loadData() {
       const cached = JSON.parse(storage.get(DATA_CACHE) || "null");
       if (cached && Array.isArray(cached.assignments)) {
         data = cached;
+        fromCache = true;
         state.lastError = `Offline copy — updated ${new Date(cached.generatedAt || cached.lastPoll).toLocaleString("en-PH", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`;
       } else throw error;
     } catch { throw error; }
   }
   state.assignments = data.assignments || [];
   state.lastPoll = data.lastPoll || null;
-  state.lastError = data.lastError || null;
+  if (!fromCache) state.lastError = data.lastError || null;
   state.termEnd = data.termEnd || null;
   els.feedHost.textContent = IS_LOCAL ? "eLMS (local)" : "eLMS (via GitHub)";
-  if (!state.ntfyTopic) state.ntfyTopic = storage.get("sti-ntfy-topic") || "";
-  if (els.topicForm) els.topicForm.hidden = false;
+  els.topicForm.hidden = false;
   if (!state.lastAck && state.assignments.length) {
     const newest = Math.max(
       0,
@@ -506,7 +514,6 @@ if ("serviceWorker" in navigator) {
           if (installing.state === "installed" && navigator.serviceWorker.controller) notify();
         });
       });
-      navigator.serviceWorker.addEventListener("controllerchange", () => window.location.reload());
     } catch { /* ignore */ }
   });
   $("update-reload").addEventListener("click", () => window.location.reload());

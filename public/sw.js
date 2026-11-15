@@ -1,8 +1,8 @@
-const CACHE = "sti-pulse-v21";
+const CACHE = "sti-pulse-v22";
 const SHELL = [
   "./",
-  "style.css?v=21",
-  "app.js?v=21",
+  "style.css?v=22",
+  "app.js?v=22",
   "manifest.webmanifest",
   "schedule.json",
   "submitted.json",
