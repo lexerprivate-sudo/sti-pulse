@@ -1,20 +1,58 @@
 const $ = (id) => document.getElementById(id);
 const DONE_KEY = "sti-done-v1";
 const DATA_CACHE = "sti-data-cache";
+const SCHEDULE_CACHE = "sti-schedule-cache";
 
 const storage = {
   get(key) { try { return localStorage.getItem(key); } catch { return null; } },
-  set(key, value) { try { localStorage.setItem(key, value); } catch { /* full or blocked */ } },
+  set(key, value) { try { localStorage.setItem(key, value); } catch { logWarn("storage set", key); } },
+  remove(key) { try { localStorage.removeItem(key); } catch { /* ignore */ } },
 };
+
+function logWarn(context, error) {
+  try { console.warn(`[STI Pulse] ${context}:`, error); } catch { /* never throw */ }
+}
+
+function isPlainObject(v) { return typeof v === "object" && v !== null && !Array.isArray(v); }
+
+function loadDone() {
+  try {
+    const parsed = JSON.parse(storage.get(DONE_KEY) || "{}");
+    if (!isPlainObject(parsed)) return {};
+    const out = {};
+    for (const [uid, value] of Object.entries(parsed)) {
+      if (typeof value === "string" || value === false) out[uid] = value;
+    }
+    return out;
+  } catch { return {}; }
+}
+function saveDone() { storage.set(DONE_KEY, JSON.stringify(state.done)); }
+
+function loadCachedJson() {
+  try {
+    const parsed = JSON.parse(storage.get(DATA_CACHE) || "null");
+    if (parsed && isPlainObject(parsed) && Array.isArray(parsed.assignments)) return parsed;
+    return null;
+  } catch { return null; }
+}
 
 const els = {
   pill: $("status-pill"),
   statusText: $("status-text"),
   list: $("assignment-list"),
   empty: $("empty"),
+  emptyTitle: $("empty-title"),
+  emptySub: $("empty-sub"),
+  emptyIcon: $("empty-icon"),
+  errorPanel: $("error-panel"),
+  errorPanelText: $("error-panel-text"),
+  errorRetry: $("error-retry"),
+  offlineBanner: $("offline-banner"),
+  offlineAge: $("offline-age"),
   listTitle: $("list-title"),
   listNote: $("list-note"),
   lastChecked: $("last-checked"),
+  listStatus: $("list-status"),
   feedHost: $("feed-host"),
   feedLast: $("feed-last"),
   feedNext: $("feed-next"),
@@ -30,17 +68,27 @@ const els = {
   installBtn: $("install-btn"),
   installHint: $("install-hint"),
   updateToast: $("update-toast"),
+  updateReload: $("update-reload"),
+  updateDismiss: $("update-dismiss"),
 };
 
 const IS_LOCAL = ["localhost", "127.0.0.1"].includes(location.hostname);
-const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const DAY_NAMES = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 const FILTER_TITLES = {
   upcoming: "Upcoming deadlines",
   overdue: "Overdue work",
   week: "Due in 7 days",
-  new: "New since your last look",
+  new: "New since you last looked",
   done: "Done & submitted",
   all: "All assignments",
+};
+const EMPTY_STATES = {
+  upcoming: { title: "All clear", sub: "New eLMS posts will appear here automatically." },
+  overdue: { title: "Nothing overdue", sub: "Everything past its due date is submitted or checked off." },
+  week: { title: "Nothing due this week", sub: "Your next 7 days are clear." },
+  new: { title: "All caught up", sub: "Nothing new since your last look." },
+  done: { title: "Nothing marked done yet", sub: "Tap the checkmark on any row to mark it done." },
+  all: { title: "No assignments yet", sub: "The eLMS feed will fill this in on the next poll." },
 };
 
 const state = {
@@ -50,24 +98,20 @@ const state = {
   termEnd: null,
   lastPoll: null,
   lastError: null,
-  lastAck: Number(storage.get("sti-last-ack") || 0),
+  offlineMode: false,
+  lastAck: Number.isFinite(Number(storage.get("sti-last-ack"))) ? Number(storage.get("sti-last-ack")) : 0,
   ntfyTopic: storage.get("sti-ntfy-topic") || "",
   done: loadDone(),
   submitted: {},
   submittedAt: null,
+  pollFailures: 0,
 };
 
-function loadDone() {
-  try { return JSON.parse(storage.get(DONE_KEY) || "{}") || {}; } catch { return {}; }
-}
-function saveDone() {
-  try { storage.set(DONE_KEY, JSON.stringify(state.done)); } catch { /* ignore */ }
-}
 function submittedInElms(item) { return Boolean(state.submitted[item.uid]?.submitted); }
 function isDone(item) {
   const m = state.done[item.uid];
   if (m === false) return false;
-  if (m) return true;
+  if (typeof m === "string") return true;
   return submittedInElms(item);
 }
 function toggleDone(item) {
@@ -94,17 +138,20 @@ function fmtDue(item) {
   return `${date}, ${d.toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" })}`;
 }
 function fmtRelative(iso) {
-  if (!iso) return "—";
-  const min = Math.round((Date.now() - new Date(iso).getTime()) / 60_000);
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return "—";
+  const min = Math.round((Date.now() - t) / 60_000);
   if (min < 1) return "just now";
   if (min < 60) return `${min} min ago`;
   const hr = Math.round(min / 60);
   if (hr < 24) return `${hr} hr ago`;
-  return new Date(iso).toLocaleString("en-PH", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  return new Date(t).toLocaleString("en-PH", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
 function badgeFor(item) {
-  if (isDone(item)) return { cls: "done", text: submittedInElms(item) && !state.done[item.uid] ? "Submitted" : "Done" };
+  if (isDone(item)) {
+    return { cls: "done", text: submittedInElms(item) && !state.done[item.uid] ? "Submitted" : "Done" };
+  }
   if (isOverdue(item)) {
     const days = Math.abs(daysUntil(item.due));
     return days > 30 ? { cls: "past", text: `${days}d ago` } : { cls: "overdue", text: days <= 1 ? "Overdue" : `${days}d late` };
@@ -144,6 +191,7 @@ function visibleItems() {
   return items;
 }
 
+/* ---------- Render ---------- */
 function renderStats() {
   const now = Date.now();
   const week = now + 7 * 86_400_000;
@@ -154,21 +202,39 @@ function renderStats() {
   $("stat-week").textContent = weekCount;
   $("stat-new").textContent = newCount;
   $("stat-total").textContent = state.assignments.length;
+  $("stat-overdue").closest(".stat").classList.toggle("danger", overdue > 0);
+  $("stat-week").closest(".stat").classList.toggle("warn", weekCount > 0);
 }
 
 function renderList() {
   const items = visibleItems();
   els.listTitle.textContent = FILTER_TITLES[state.filter] || "Assignments";
+  els.listStatus.textContent = items.length ? `${items.length} shown` : "Empty";
   els.list.innerHTML = "";
-  if (!items.length) { els.empty.hidden = false; return; }
-  els.empty.hidden = true;
+
+  const failedAndNoData = state.lastError && !state.assignments.length;
+  els.errorPanel.hidden = !failedAndNoData;
+  els.empty.hidden = items.length > 0 || failedAndNoData;
+
+  if (failedAndNoData) {
+    els.errorPanelText.textContent = state.lastError.includes("web page")
+      ? "The feed responded with a page instead of data — the site may be misconfigured. Try Refresh in a bit."
+      : "Could not reach the eLMS feed. Check your connection, then retry.";
+    return;
+  }
+  if (!items.length) {
+    const copy = EMPTY_STATES[state.filter] || EMPTY_STATES.upcoming;
+    els.emptyTitle.textContent = copy.title;
+    els.emptySub.textContent = copy.sub;
+    return;
+  }
 
   const frag = document.createDocumentFragment();
   for (const item of items) {
     const done = isDone(item);
     const badge = badgeFor(item);
     const row = document.createElement("article");
-    row.className = `row ${isOverdue(item) && !done ? "overdue" : ""} ${done ? "done" : ""}`.trim();
+    row.className = `row ${isOverdue(item) && !done ? "overdue" : ""} ${done ? "is-done" : ""}`.trim();
 
     const badgeEl = document.createElement("span");
     badgeEl.className = `badge ${badge.cls}`.trim();
@@ -202,14 +268,15 @@ function renderList() {
     check.className = `row-check${done ? " on" : ""}`;
     check.title = done ? "Mark as not done" : "Mark as done";
     check.setAttribute("aria-pressed", done ? "true" : "false");
-    check.setAttribute("aria-label", `${done ? "Unmark" : "Mark"} ${item.title} as ${done ? "not done" : "done"}`);
+    check.setAttribute("aria-label", `Mark "${item.title}" as ${done ? "not done" : "done"}`);
     check.dataset.uid = item.uid;
-    check.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.5l5 5L19.5 6.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    check.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4" fill="none" stroke="currentColor" stroke-width="2"/><path class="check-path" d="M8.5 12.5l2.5 2.5L15.5 9.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     check.addEventListener("click", () => {
       toggleDone(item);
-      renderAll();
+      renderList();
+      renderStats();
       const btn = els.list.querySelector(`[data-uid="${CSS.escape(item.uid)}"]`);
-      (btn || els.list).focus();
+      (btn || els.list).focus({ preventScroll: true });
     });
 
     row.append(badgeEl, body, check);
@@ -218,9 +285,10 @@ function renderList() {
   els.list.append(frag);
 }
 
-function minutes(hhmm) { const [h, m] = hhmm.split(":").map(Number); return h * 60 + m; }
+function minutes(hhmm) { const [h, m] = String(hhmm).split(":").map(Number); return (Number.isFinite(h) ? h : 0) * 60 + (Number.isFinite(m) ? m : 0); }
 function fmtClock(hhmm) {
-  const [h, m] = hhmm.split(":").map(Number);
+  const [h, m] = String(hhmm).split(":").map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return String(hhmm);
   const suffix = h >= 12 ? "PM" : "AM";
   const hour = h % 12 === 0 ? 12 : h % 12;
   return `${hour}:${String(m).padStart(2, "0")} ${suffix}`;
@@ -264,6 +332,7 @@ function renderSchedule() {
     const head = document.createElement("div");
     head.className = "day";
     head.textContent = DAY_NAMES[day];
+    head.title = "Day";
     const col = document.createElement("div");
     const classes = SCHEDULE[day] || [];
     if (!classes.length) {
@@ -278,12 +347,13 @@ function renderSchedule() {
         const time = document.createElement("span");
         time.className = "time";
         time.textContent = `${fmtClock(item.from)}–${fmtClock(item.to)}`;
-        const title = document.createElement("span");
-        title.textContent = item.course;
+        const course = document.createElement("span");
+        course.className = "course-name";
+        course.textContent = item.course;
         const room = document.createElement("span");
         room.className = "room";
         room.textContent = item.room || "";
-        row.append(time, title, room);
+        row.append(time, course, room);
         col.append(row);
       }
     }
@@ -294,137 +364,182 @@ function renderSchedule() {
 }
 
 function renderStatus() {
-  const ok = !state.lastError && state.lastPoll;
-  els.pill.classList.toggle("ok", Boolean(ok));
+  const stale = state.lastError || !state.lastPoll;
+  els.pill.classList.toggle("ok", !stale);
   els.pill.classList.toggle("bad", Boolean(state.lastError));
-  els.statusText.textContent = state.lastError ? "Feed problem" : ok ? "Connected" : "Connecting…";
+  els.statusText.textContent = state.lastError
+    ? "Connection problem"
+    : state.lastPoll
+      ? "Connected"
+      : "Connecting…";
   els.feedLast.textContent = state.lastPoll ? fmtRelative(state.lastPoll) : "—";
-  els.feedNext.textContent = state.staticMode ? "every 15 min" : "—";
+  els.feedNext.textContent = state.staticMode ? "Every 15 min" : "On demand";
   els.feedError.hidden = !state.lastError;
-  els.feedError.textContent = state.lastError || "";
-  els.termEnd.textContent = state.termEnd ? new Date(state.termEnd).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" }) : "—";
+  els.feedError.textContent = state.lastError
+    ? "eLMS is not responding right now. Showing your last saved copy."
+    : "";
+  els.termEnd.textContent = state.termEnd && Number.isFinite(new Date(state.termEnd).getTime())
+    ? new Date(state.termEnd).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })
+    : "—";
   els.lastChecked.textContent = state.lastPoll ? `Checked ${fmtRelative(state.lastPoll)}` : "Checking…";
   els.listNote.textContent = state.submittedAt
-    ? `Submission status from eLMS snapshot checked ${new Date(state.submittedAt).toLocaleDateString("en-PH", { month: "short", day: "numeric" })}.`
-    : "Submission status unavailable — tap a row's check to mark done.";
+    ? `Done status from the latest eLMS sync (${new Date(state.submittedAt).toLocaleDateString("en-PH", { month: "short", day: "numeric" })}). Tap a checkmark to override.`
+    : "Submission status unavailable — tap the checkmark to mark done.";
+  els.offlineBanner.hidden = !state.offlineMode;
+  if (state.offlineMode && state.lastPoll) {
+    els.offlineAge.textContent = fmtRelative(state.lastPoll);
+  }
 }
 
 function renderTopic() {
   const topic = state.ntfyTopic;
   els.ntfyTopic.textContent = topic || "Not set on this device";
   els.ntfyLink.href = topic ? `https://ntfy.sh/${encodeURIComponent(topic)}` : "https://ntfy.sh";
-  if (document.activeElement !== els.ntfyInput && document.activeElement !== $("ntfy-topic")) {
+  if (document.activeElement !== els.ntfyInput) {
     els.ntfyInput.value = topic;
   }
   const copyBtn = $("copy-topic");
   if (copyBtn) copyBtn.disabled = !topic;
 }
 
-function renderAll() { renderStats(); renderSchedule(); renderList(); renderStatus(); renderTopic(); }
+function renderAll() {
+  renderStats();
+  renderSchedule();
+  renderList();
+  renderStatus();
+  renderTopic();
+}
 
+/* ---------- Data loading ---------- */
 async function loadSchedule() {
   try {
-    const res = await fetch(`schedule.json?t=${Date.now()}`, { cache: "no-store" });
-    if (!res.ok) throw new Error("schedule unavailable");
-    SCHEDULE = (await res.json()).days || {};
-  } catch { /* keep cached */ }
+    const res = await fetch("schedule.json", { cache: "no-cache" });
+    const text = await res.text();
+    const data = JSON.parse(text);
+    if (!isPlainObject(data.days)) throw new Error("bad schedule shape");
+    SCHEDULE = data.days;
+    storage.set(SCHEDULE_CACHE, text);
+  } catch (error) {
+    logWarn("schedule load", error);
+    try {
+      const cached = JSON.parse(storage.get(SCHEDULE_CACHE) || "null");
+      if (isPlainObject(cached?.days)) SCHEDULE = cached.days;
+    } catch { /* keep empty */ }
+  }
 }
+
 async function loadSubmitted() {
   try {
-    const res = await fetch(`submitted.json?t=${Date.now()}`, { cache: "no-store" });
-    if (!res.ok) throw new Error("snapshot unavailable");
-    const data = await res.json();
-    state.submitted = data.items || {};
+    const res = await fetch("submitted.json", { cache: "no-cache" });
+    const text = await res.text();
+    const data = JSON.parse(text);
+    if (!isPlainObject(data.items)) throw new Error("bad snapshot shape");
+    state.submitted = data.items;
     state.submittedAt = data.checkedAt || null;
-  } catch { state.submitted = {}; state.submittedAt = null; }
+  } catch (error) {
+    logWarn("submission snapshot load", error);
+  }
+}
+
+async function fetchDataJson() {
+  const res = await fetch("data.json", { cache: "no-cache" });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (text.trim().startsWith("<")) throw new Error("data.json unavailable (got a web page instead of data)");
+  const data = JSON.parse(text);
+  if (!isPlainObject(data) || !Array.isArray(data.assignments)) {
+    throw new Error("data.json has an unexpected shape");
+  }
+  return data;
 }
 
 async function loadData() {
-  let data;
-  let fromCache = false;
   try {
-    const res = await fetch(`data.json?t=${Date.now()}`, { cache: "no-store" });
-    const text = await res.text();
-    if (!res.ok || text.trim().startsWith("<")) throw new Error("data.json unavailable (got a web page instead of data)");
-    data = JSON.parse(text);
-    try { storage.set(DATA_CACHE, text); } catch { /* full */ }
+    const data = await fetchDataJson();
+    storage.set(DATA_CACHE, JSON.stringify(data));
+    state.assignments = data.assignments;
+    state.lastPoll = data.lastPoll || null;
+    state.lastError = data.lastError || null;
+    state.termEnd = data.termEnd || null;
+    state.offlineMode = false;
+    state.pollFailures = 0;
   } catch (error) {
-    try {
-      const cached = JSON.parse(storage.get(DATA_CACHE) || "null");
-      if (cached && Array.isArray(cached.assignments)) {
-        data = cached;
-        fromCache = true;
-        state.lastError = `Offline copy — updated ${new Date(cached.generatedAt || cached.lastPoll).toLocaleString("en-PH", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`;
-      } else throw error;
-    } catch { throw error; }
-  }
-  state.assignments = data.assignments || [];
-  state.lastPoll = data.lastPoll || null;
-  if (!fromCache) state.lastError = data.lastError || null;
-  state.termEnd = data.termEnd || null;
-  els.feedHost.textContent = IS_LOCAL ? "eLMS (local)" : "eLMS (via GitHub)";
-  els.topicForm.hidden = false;
-  if (!state.lastAck && state.assignments.length) {
-    const newest = Math.max(
-      0,
-      ...state.assignments.map((a) => new Date(a.firstSeen).getTime()).filter(Number.isFinite)
-    );
-    if (newest) {
-      state.lastAck = newest;
-      storage.set("sti-last-ack", String(state.lastAck));
+    logWarn("data load", error);
+    state.pollFailures += 1;
+    const cached = loadCachedJson();
+    if (cached) {
+      state.assignments = cached.assignments;
+      state.lastPoll = cached.generatedAt || cached.lastPoll || null;
+      state.lastError = String(error?.message || error);
+      state.termEnd = cached.termEnd || null;
+      state.offlineMode = true;
+    } else {
+      state.assignments = [];
+      state.lastPoll = null;
+      state.lastError = String(error?.message || error);
+      state.offlineMode = true;
     }
+    return;
   }
+  els.feedHost.textContent = "eLMS";
 }
 
 async function load() {
-  await Promise.all([loadSchedule(), loadSubmitted()]);
-  await loadData();
+  await Promise.all([loadSchedule(), loadSubmitted(), loadData()]);
+  els.feedHost.textContent = "eLMS";
+  pruneDoneKeys();
   renderAll();
 }
 
-function renderNotifState() {
-  const btn = els.enableNotifs;
-  if (!btn) return;
-  if (!("Notification" in window)) { btn.textContent = "Not supported"; btn.disabled = true; return; }
-  if (Notification.permission === "granted") { btn.textContent = "Alerts on ✓"; btn.disabled = true; return; }
-  if (Notification.permission === "denied") {
-    btn.textContent = "Permission denied";
-    btn.disabled = true;
-    els.installHint.textContent = "Alerts blocked — enable them for this site in browser settings.";
+function pruneDoneKeys() {
+  const feedUids = new Set(state.assignments.map((a) => a.uid));
+  let changed = false;
+  for (const uid of Object.keys(state.done)) {
+    if (!feedUids.has(uid)) {
+      delete state.done[uid];
+      changed = true;
+    }
   }
+  if (changed) saveDone();
 }
 
-/* ---------- Bind events ---------- */
+/* ---------- UI events ---------- */
 document.querySelectorAll(".tab").forEach((tab) => {
   tab.addEventListener("click", () => {
     document.querySelectorAll(".tab").forEach((t) => {
-      t.classList.toggle("active", t === tab);
-      t.setAttribute("aria-pressed", t === tab ? "true" : "false");
+      const on = t === tab;
+      t.classList.toggle("active", on);
+      t.setAttribute("aria-pressed", on ? "true" : "false");
     });
     state.filter = tab.dataset.filter;
     renderList();
   });
 });
 
-$("refresh-btn").addEventListener("click", async () => {
-  const btn = $("refresh-btn");
-  btn.disabled = true;
+const refreshBtn = $("refresh-btn");
+refreshBtn.addEventListener("click", async () => {
+  refreshBtn.disabled = true;
   try {
-    const res = await fetch(`data.json?t=${Date.now()}`, { cache: "no-store" });
-    const text = await res.text();
-    if (!res.ok || text.trim().startsWith("<")) throw new Error("refresh failed");
-    const data = JSON.parse(text);
-    storage.set(DATA_CACHE, text);
-    state.assignments = data.assignments || [];
+    const data = await fetchDataJson();
+    storage.set(DATA_CACHE, JSON.stringify(data));
+    state.assignments = data.assignments;
     state.lastPoll = data.lastPoll || null;
     state.lastError = data.lastError || null;
     state.termEnd = data.termEnd || null;
+    state.offlineMode = false;
+    state.pollFailures = 0;
     renderAll();
-  } catch (e) {
-    state.lastError = String(e?.message || e);
+  } catch (error) {
+    logWarn("manual refresh", error);
+    state.pollFailures += 1;
+    state.lastError = String(error?.message || error);
     renderStatus();
-  } finally { btn.disabled = false; }
+  } finally {
+    refreshBtn.disabled = false;
+  }
 });
+
+$("error-retry").addEventListener("click", () => { load(); });
 
 $("ack-btn").addEventListener("click", () => {
   state.lastAck = Date.now();
@@ -434,25 +549,39 @@ $("ack-btn").addEventListener("click", () => {
 
 $("copy-topic").addEventListener("click", async () => {
   const btn = $("copy-topic");
-  if (!state.ntfyTopic) { btn.textContent = "Set topic first"; setTimeout(() => (btn.textContent = "Copy"), 1600); return; }
-  const done = () => { btn.textContent = "Copied ✓"; setTimeout(() => (btn.textContent = "Copy"), 1600); };
+  if (!state.ntfyTopic) {
+    btn.textContent = "Set topic first";
+    setTimeout(() => (btn.textContent = "Copy"), 1600);
+    return;
+  }
+  const done = () => {
+    btn.textContent = "Copied ✓";
+    setTimeout(() => (btn.textContent = "Copy"), 1600);
+  };
   try {
-    if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(state.ntfyTopic);
-    else {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(state.ntfyTopic);
+      done();
+    } else {
       const ta = document.createElement("textarea");
       ta.value = state.ntfyTopic;
       ta.style.cssText = "position:fixed;opacity:0";
       document.body.append(ta);
       ta.select();
-      document.execCommand("copy");
+      let ok = false;
+      try { ok = document.execCommand("copy"); } catch { ok = false; }
       ta.remove();
+      if (ok) done(); else throw new Error("copy failed");
     }
-    done();
-  } catch { btn.textContent = "Failed"; setTimeout(() => (btn.textContent = "Copy"), 1600); }
+  } catch (error) {
+    logWarn("clipboard copy", error);
+    btn.textContent = "Failed";
+    setTimeout(() => (btn.textContent = "Copy"), 1600);
+  }
 });
 
-els.topicForm.addEventListener("submit", (e) => {
-  e.preventDefault();
+els.topicForm.addEventListener("submit", (event) => {
+  event.preventDefault();
   const topic = els.ntfyInput.value.trim();
   if (!topic) return;
   state.ntfyTopic = topic;
@@ -463,38 +592,73 @@ els.topicForm.addEventListener("submit", (e) => {
 
 $("test-notify").addEventListener("click", async () => {
   const btn = $("test-notify");
-  if (!state.ntfyTopic) { btn.textContent = "Set a topic"; setTimeout(() => (btn.textContent = "Send test"), 1800); return; }
+  if (!state.ntfyTopic) {
+    btn.textContent = "Set a topic first";
+    setTimeout(() => (btn.textContent = "Send test"), 1800);
+    return;
+  }
   btn.disabled = true;
   try {
     const res = await fetch(`https://ntfy.sh/${encodeURIComponent(state.ntfyTopic)}`, {
       method: "POST",
       body: "STI Pulse test — if you see this, alerts work.",
     });
-    btn.textContent = res.ok ? "Sent ✓" : "Failed";
-  } catch { btn.textContent = "Failed"; }
+    const data = await res.json().catch(() => null);
+    btn.textContent = res.ok && data?.id ? "Sent ✓" : "Failed";
+  } catch (error) {
+    logWarn("test notification", error);
+    btn.textContent = "Failed";
+  }
   setTimeout(() => { btn.disabled = false; btn.textContent = "Send test"; }, 1800);
 });
 
 els.enableNotifs.addEventListener("click", async () => {
-  if (!("Notification" in window)) { els.enableNotifs.textContent = "Not supported"; return; }
-  const perm = await Notification.requestPermission();
+  if (!("Notification" in window)) {
+    els.enableNotifs.textContent = "Not supported";
+    return;
+  }
+  let perm = "default";
+  try { perm = await Notification.requestPermission(); } catch (error) { logWarn("notification permission", error); }
   renderNotifState();
-  if (perm === "granted") new Notification("STI Pulse", { body: "Alerts are on for this device.", icon: "icon-192.png" });
+  if (perm === "granted") {
+    try { new Notification("STI Pulse", { body: "Alerts are on for this device.", icon: "icon-192.png" }); } catch { /* platform-blocked */ }
+  }
 });
+
+function renderNotifState() {
+  const btn = els.enableNotifs;
+  if (!btn) return;
+  if (!("Notification" in window)) { btn.textContent = "Not supported"; btn.disabled = true; return; }
+  if (Notification.permission === "granted") {
+    btn.textContent = "Alerts on ✓";
+    btn.disabled = true;
+    return;
+  }
+  if (Notification.permission === "denied") {
+    btn.textContent = "Permission denied";
+    btn.disabled = true;
+    els.installHint.textContent = "Alerts blocked — enable them for this site in browser settings.";
+  }
+}
 
 /* ---------- Install prompt ---------- */
 let deferredPrompt = null;
-window.addEventListener("beforeinstallprompt", (e) => {
-  e.preventDefault();
-  deferredPrompt = e;
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  deferredPrompt = event;
   els.installBtn.hidden = false;
 });
 els.installBtn.addEventListener("click", async () => {
   if (!deferredPrompt) return;
-  deferredPrompt.prompt();
-  const { outcome } = await deferredPrompt.userChoice;
-  if (outcome === "accepted") els.installBtn.hidden = true;
+  try {
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === "accepted") els.installBtn.hidden = true;
+  } catch (error) {
+    logWarn("install prompt", error);
+  }
 });
+window.addEventListener("appinstalled", () => { els.installBtn.hidden = true; });
 if (window.matchMedia("(display-mode: standalone)").matches) {
   els.installBtn.hidden = true;
   els.installHint.textContent = "Installed. Open it like any app.";
@@ -505,8 +669,7 @@ if ("serviceWorker" in navigator) {
   window.addEventListener("load", async () => {
     try {
       const reg = await navigator.serviceWorker.register("sw.js");
-      const notify = () => { els.updateToast.removeAttribute("hidden"); els.updateToast.classList.add("show"); };
-      if (reg.waiting) notify();
+      const notify = () => { els.updateToast.classList.add("show"); };
       reg.addEventListener("updatefound", () => {
         const installing = reg.installing;
         if (!installing) return;
@@ -514,30 +677,68 @@ if ("serviceWorker" in navigator) {
           if (installing.state === "installed" && navigator.serviceWorker.controller) notify();
         });
       });
-    } catch { /* ignore */ }
+    } catch (error) {
+      logWarn("service worker registration", error);
+    }
   });
-  $("update-reload").addEventListener("click", () => window.location.reload());
+  els.updateReload.addEventListener("click", () => window.location.reload());
+  els.updateDismiss.addEventListener("click", () => els.updateToast.classList.remove("show"));
 }
 
+/* ---------- Tab overflow cue ---------- */
+function updateTabsCue() {
+  const tabs = document.querySelector(".tabs");
+  if (tabs) tabs.classList.toggle("scrollable", tabs.scrollWidth > tabs.clientWidth + 4);
+}
+window.addEventListener("resize", updateTabsCue);
+
 renderNotifState();
-load().catch((error) => { state.lastError = String(error?.message || error); renderAll(); });
+load().catch((error) => {
+  logWarn("load", error);
+  state.lastError = String(error?.message || error);
+  renderAll();
+});
+updateTabsCue();
 
 /* Keep data fresh while the app is open */
 setInterval(() => {
-  if (!state.staticMode) return;
-  fetch(`data.json?t=${Date.now()}`, { cache: "no-store" })
-    .then((r) => (r.ok ? r.text() : null))
+  if (document.hidden) return;
+  fetch("data.json", { cache: "no-cache" })
+    .then((r) => (r.ok ? r.text() : Promise.reject(new Error(`HTTP ${r.status}`))))
     .then((text) => {
-      if (!text || text.trim().startsWith("<")) return;
+      if (text.trim().startsWith("<")) throw new Error("got a web page instead of data");
       const data = JSON.parse(text);
-      const before = new Set(state.assignments.map((a) => a.uid));
-      const fresh = (data.assignments || []).filter((a) => !before.has(a.uid));
-      if (fresh.length) {
-        storage.set(DATA_CACHE, text);
+      if (!isPlainObject(data) || !Array.isArray(data.assignments)) return;
+      state.assignments = data.assignments;
+      state.lastPoll = data.lastPoll || null;
+      state.lastError = data.lastError || null;
+      state.offlineMode = false;
+      state.pollFailures = 0;
+      storage.set(DATA_CACHE, text);
+      renderAll();
+    })
+    .catch((error) => {
+      logWarn("background refresh", error);
+      state.pollFailures += 1;
+      if (state.pollFailures >= 2) state.lastError = "Background refresh failed repeatedly.";
+      renderStatus();
+    });
+}, 60_000);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) {
+    fetch("data.json", { cache: "no-cache" })
+      .then((r) => (r.ok ? r.text() : null))
+      .then((text) => {
+        if (!text || text.trim().startsWith("<")) return;
+        const data = JSON.parse(text);
+        if (!isPlainObject(data) || !Array.isArray(data.assignments)) return;
         state.assignments = data.assignments;
         state.lastPoll = data.lastPoll || null;
+        state.lastError = data.lastError || null;
+        state.offlineMode = false;
+        storage.set(DATA_CACHE, text);
         renderAll();
-      }
-    })
-    .catch(() => {});
-}, 60_000);
+      })
+      .catch((error) => logWarn("visibility refresh", error));
+  }
+});

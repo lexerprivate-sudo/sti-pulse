@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b0f14" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta
+      name="description"
+      content="STI Pulse watches your eLMS assignments and alerts you when something new is posted."
+    />
+    <title>STI Pulse</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icon-192.png" />
+    <style>
+{{CSS}}
+    </style>
+  </head>
+  <body>
+    <a class="skip-link" href="#assignment-list">Skip to assignments</a>
+
+    <header class="topbar">
+      <div class="brand">
+        <span class="mark" aria-hidden="true">
+          <svg viewBox="0 0 48 48" role="img">
+            <path d="M6 27h9l4-13 7 22 5-16 4 7h11" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </span>
+        <div class="brand-text">
+          <h1>STI Pulse</h1>
+          <p>STI assignment alerts from eLMS, in one place</p>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <span class="pill" id="status-pill" title="Connection status" role="status" aria-live="polite">
+          <span class="pill-dot"></span><span id="status-text">Connecting…</span>
+        </span>
+        <button class="icon-btn" id="refresh-btn" type="button" aria-label="Refresh now">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <section class="content" aria-labelledby="assignments-heading">
+        <h2 class="visually-hidden" id="assignments-heading">Assignments</h2>
+
+        <div id="offline-banner" class="offline-banner" role="status" hidden>
+          You're offline — showing the copy saved
+          <b id="offline-age">recently</b>. Changes sync when you reconnect.
+        </div>
+
+        <div class="stats" id="stats">
+          <div class="stat"><span class="lbl">Overdue</span><strong id="stat-overdue">–</strong></div>
+          <div class="stat"><span class="lbl">Due in 7 days</span><strong id="stat-week">–</strong></div>
+          <div class="stat"><span class="lbl">New</span><strong id="stat-new">–</strong></div>
+          <div class="stat"><span class="lbl">Total</span><strong id="stat-total">–</strong></div>
+        </div>
+
+        <div class="toolbar">
+          <nav class="tabs" aria-label="Filter assignments" role="group">
+            <button class="tab active" data-filter="upcoming" type="button" aria-pressed="true">Upcoming</button>
+            <button class="tab" data-filter="overdue" type="button" aria-pressed="false">Overdue</button>
+            <button class="tab" data-filter="week" type="button" aria-pressed="false">7 days</button>
+            <button class="tab" data-filter="new" type="button" aria-pressed="false">New</button>
+            <button class="tab" data-filter="done" type="button" aria-pressed="false">Done</button>
+            <button class="tab" data-filter="all" type="button" aria-pressed="false">All</button>
+          </nav>
+          <button class="ghost-btn" id="ack-btn" type="button">Mark all seen</button>
+        </div>
+
+        <div class="list-head">
+          <h2 id="list-title">Upcoming deadlines</h2>
+          <span class="muted" id="last-checked">Checking…</span>
+        </div>
+        <p class="visually-hidden" id="list-status" aria-live="polite"></p>
+        <p class="note" id="list-note">Submission status from the latest eLMS sync.</p>
+
+        <div id="error-panel" class="error-panel" role="alert" hidden>
+          <h3>Can't reach eLMS yet</h3>
+          <p id="error-panel-text">Could not load assignment data. Check your connection, then retry.</p>
+          <button class="mini primary" id="error-retry" type="button">Retry</button>
+        </div>
+
+        <div id="assignment-list" class="assignment-list" tabindex="-1"></div>
+        <div id="empty" class="empty" hidden role="status" aria-live="polite">
+          <div class="empty-icon" id="empty-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <p id="empty-title">All clear</p>
+          <span id="empty-sub">New eLMS posts will appear automatically.</span>
+        </div>
+
+        <footer class="conn">
+          <span>Source <b id="feed-host">eLMS</b></span>
+          <span>Last check <b id="feed-last">–</b></span>
+          <span>Checks <b id="feed-next">Every 15 min</b></span>
+          <span>Term ends <b id="term-end">–</b></span>
+          <p class="error" id="feed-error" role="alert" hidden></p>
+        </footer>
+      </section>
+
+      <aside class="sidebar" aria-label="Context panels">
+        <section class="panel" aria-labelledby="schedule-heading">
+          <h2 class="panel-title" id="schedule-heading">Class schedule</h2>
+          <p class="next" id="next-class">—</p>
+          <ol class="week" id="week"></ol>
+        </section>
+
+        <section class="panel" aria-labelledby="alerts-heading">
+          <h2 class="panel-title" id="alerts-heading">Get alerts</h2>
+          <p class="hint">In the free ntfy app, subscribe to your private topic:</p>
+          <div class="topic">
+            <code id="ntfy-topic">—</code>
+            <button class="mini" id="copy-topic" type="button">Copy</button>
+          </div>
+          <form id="topic-form" class="topic-form" hidden>
+            <label class="visually-hidden" for="topic-set">ntfy topic</label>
+            <input id="topic-set" name="ntfy-topic" type="text" autocomplete="off" spellcheck="false" placeholder="Paste your ntfy topic (e.g. sti-…)" />
+            <button class="mini primary" type="submit">Save</button>
+          </form>
+          <div class="btn-row">
+            <a class="mini" id="ntfy-link" href="https://ntfy.sh" target="_blank" rel="noopener">Open ntfy<span class="visually-hidden"> (opens in a new tab)</span></a>
+            <button class="mini" id="test-notify" type="button">Send test</button>
+          </div>
+          <p class="hint small">Anyone with this topic can read your alerts — don't share it. Class reminders arrive 3 hours before class.</p>
+        </section>
+
+        <section class="panel" aria-labelledby="device-heading">
+          <h2 class="panel-title" id="device-heading">This device</h2>
+          <div class="btn-row">
+            <button class="mini primary" id="enable-notifs" type="button">Enable alerts</button>
+            <button class="mini" id="install-btn" type="button" hidden>Install app</button>
+          </div>
+          <p class="hint small" id="install-hint">On phone: browser menu → “Add to Home screen”.</p>
+        </section>
+      </aside>
+    </main>
+
+    <div id="update-toast" class="toast" role="status" aria-live="polite">
+      <span>A new version is ready.</span>
+      <button class="mini primary" id="update-reload" type="button">Reload</button>
+      <button class="dismiss" id="update-dismiss" type="button" aria-label="Dismiss update notice">×</button>
+    </div>
+
+    <script type="module">
+{{JS}}
+    </script>
+  </body>
+</html>

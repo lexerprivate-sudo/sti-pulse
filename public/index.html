@@ -4,28 +4,101 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0b0f14" />
+    <meta name="color-scheme" content="dark" />
     <meta name="robots" content="noindex, nofollow" />
-    <meta name="description" content="STI Pulse watches your eLMS assignments and alerts you when something new is posted." />
+    <meta
+      name="description"
+      content="STI Pulse watches your eLMS assignments and alerts you when something new is posted."
+    />
     <title>STI Pulse</title>
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icon-192.png" />
     <style>
+/* STI Pulse — design system (single source of truth)
+   4px spacing grid · minor-third type scale · 2-tier tokens */
+
+.ref-blue-500 { --ref-blue-500: #4f8ef7; }
+
 :root {
   color-scheme: dark;
-  --bg: #0b0f14;
-  --panel: #11161e;
-  --panel-2: #171e28;
-  --line: #222a36;
-  --line-soft: #1b222d;
-  --text: #e9edf2;
-  --dim: #aeb7c4;
-  --muted: #8b95a6;
+
+  /* surfaces */
+  --surface-0: #0b0f14;
+  --surface-1: #11161e;
+  --surface-2: #171e28;
+  --border-soft: #1f2836;
+  --border: #2b3444;
+
+  /* text */
+  --text-1: #e9edf2;
+  --text-2: #aeb7c4;
+  --text-3: #8b95a6;
+
+  /* accent */
   --accent: #4f8ef7;
-  --danger: #f0685f;
-  --warn: #e2b64b;
+  --accent-hi: #7faeff;
+  --accent-soft: rgba(79, 142, 247, 0.14);
+  --accent-line: rgba(79, 142, 247, 0.32);
+  --gradient-accent: linear-gradient(135deg, #7ab5ff 0%, #4f8ef7 46%, #3f6ee0 100%);
+  --gradient-accent-hover: linear-gradient(135deg, #8fc1ff 0%, #5a9bfa 46%, #4a7de6 100%);
+  --shadow-glow: 0 2px 14px rgba(79, 142, 247, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+
+  /* semantic */
   --ok: #3ccf91;
-  --radius: 12px;
+  --ok-soft: rgba(60, 207, 145, 0.12);
+  --ok-line: rgba(60, 207, 145, 0.32);
+  --warn: #e2b64b;
+  --warn-ink: #ffd479;
+  --warn-soft: rgba(226, 182, 75, 0.12);
+  --warn-line: rgba(226, 182, 75, 0.32);
+  --danger: #f0685f;
+  --danger-ink: #ff8d85;
+  --danger-soft: rgba(240, 104, 95, 0.12);
+  --danger-line: rgba(240, 104, 95, 0.32);
+
+  /* elevation */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.45);
+
+  /* radii */
+  --r-xs: 6px;
+  --r-sm: 8px;
+  --r-md: 10px;
+  --r-lg: 12px;
+  --r-pill: 999px;
+
+  /* spacing */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+
+  /* type */
+  --fs-100: 10px;
+  --fs-200: 12px;
+  --fs-300: 13px;
+  --fs-400: 14px;
+  --fs-500: 16px;
+  --fs-600: 18px;
+  --fs-700: 24px;
+  --w-regular: 400;
+  --w-medium: 500;
+  --w-semibold: 600;
+  --w-bold: 700;
+  --track-caps: 0.08em;
+  --track-snug: -0.01em;
+  --track-tight: -0.02em;
+
+  --target-min: 44px;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dur-1: 120ms;
+  --dur-2: 180ms;
+  --dur-3: 240ms;
 }
 
 * { box-sizing: border-box; }
@@ -35,272 +108,335 @@ button, a, input { touch-action: manipulation; }
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-  border-radius: 6px;
+  border-radius: var(--r-xs);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
 }
+
+[hidden] { display: none !important; }
 
 .skip-link {
   position: absolute; left: -9999px; top: 0;
-  background: var(--panel-2); color: var(--text); padding: 10px 14px; border-radius: 0 0 8px 0; z-index: 30;
+  background: var(--surface-2); color: var(--text-1);
+  padding: var(--sp-3) var(--sp-4); border-radius: 0 0 var(--r-md) 0;
+  font-size: var(--fs-300); font-weight: var(--w-medium); z-index: 30;
+  min-height: var(--target-min); display: inline-flex; align-items: center;
 }
 .skip-link:focus { left: 0; }
 
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font: 14px/1.45 "Segoe UI", system-ui, -apple-system, sans-serif;
+  background:
+    radial-gradient(900px 480px at 78% -10%, rgba(79, 142, 247, 0.10), transparent 60%),
+    radial-gradient(700px 520px at -12% 28%, rgba(63, 110, 224, 0.06), transparent 55%),
+    var(--surface-0);
+  color: var(--text-1);
+  font: var(--fs-400) / 1.45 "Segoe UI", system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-.muted { color: var(--muted); }
+.muted { color: var(--text-3); }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* ---------- Top bar ---------- */
 .topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 10px max(16px, env(safe-area-inset-left));
-  border-bottom: 1px solid var(--line-soft);
-  background: rgba(11, 15, 20, 0.9);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  position: sticky;
-  top: 0;
-  z-index: 20;
+  display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
+  width: min(100%, 1440px); margin: 0 auto;
+  padding: var(--sp-3) var(--sp-4);
+  padding-top: max(var(--sp-3), env(safe-area-inset-top));
+  padding-right: max(var(--sp-4), env(safe-area-inset-right));
+  border-bottom: 1px solid var(--border-soft);
+  background: rgba(11, 15, 20, 0.85);
+  backdrop-filter: blur(10px) saturate(1.1);
+  -webkit-backdrop-filter: blur(10px) saturate(1.1);
+  position: sticky; top: 0; z-index: 20;
 }
 
-.brand { display: flex; align-items: center; gap: 9px; min-width: 0; }
-.mark { width: 30px; height: 30px; color: var(--accent); flex-shrink: 0; }
-.brand-text h1 { margin: 0; font-size: 16px; font-weight: 650; letter-spacing: -0.01em; }
-.brand-text p { margin: 0; font-size: 10.5px; color: var(--muted); white-space: nowrap; }
+.brand { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+.mark {
+  width: 34px; height: 34px; border-radius: var(--r-md); flex-shrink: 0;
+  background: linear-gradient(160deg, rgba(79, 142, 247, 0.25), rgba(79, 142, 247, 0.06));
+  border: 1px solid var(--accent-line);
+  display: grid; place-items: center; color: var(--accent);
+}
+.mark svg { width: 20px; height: 20px; }
+.brand-text h1 { margin: 0; font-size: var(--fs-500); font-weight: var(--w-semibold); letter-spacing: var(--track-snug); }
+.brand-text p { margin: 0; font-size: var(--fs-100); color: var(--text-3); white-space: nowrap; }
 
-.topbar-actions { display: flex; align-items: center; gap: 8px; }
+.topbar-actions { display: flex; align-items: center; gap: var(--sp-2); }
 .pill {
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 5px 10px; border: 1px solid var(--line); border-radius: 999px;
-  font-size: 11px; color: var(--dim); white-space: nowrap;
+  padding: 6px var(--sp-3); border: 1px solid var(--border-soft); border-radius: var(--r-pill);
+  font-size: var(--fs-200); color: var(--text-2); white-space: nowrap;
+  background: var(--surface-1);
 }
-.pill-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+.pill-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-3); }
 .pill.ok .pill-dot { background: var(--ok); }
 .pill.bad .pill-dot { background: var(--danger); }
 
 .icon-btn {
-  width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 9px;
-  background: transparent; color: var(--dim); display: grid; place-items: center; cursor: pointer;
+  width: var(--target-min); height: var(--target-min);
+  border: 1px solid var(--border-soft); border-radius: var(--r-sm);
+  background: transparent; color: var(--text-2);
+  display: grid; place-items: center; cursor: pointer;
+  transition: color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease);
 }
-.icon-btn svg { width: 17px; height: 17px; }
-.icon-btn:hover { color: var(--text); border-color: var(--accent); }
-.icon-btn:active { background: var(--panel-2); }
-
-.tab:active, .mini:active, .ghost-btn:active, .row-check:active { background: var(--panel-2); }
+.icon-btn svg { width: 18px; height: 18px; }
+.icon-btn:hover { color: var(--text-1); border-color: var(--accent-line); }
+.icon-btn:active { background: var(--surface-2); }
 
 /* ---------- Layout ---------- */
 .wrap {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
-  gap: 18px;
-  padding: 16px;
-  max-width: 1280px;
-  margin: 0 auto;
+  display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: var(--sp-4);
+  padding: var(--sp-4); padding-bottom: max(var(--sp-6), env(safe-area-inset-bottom));
+  max-width: 1280px; margin: 0 auto;
+  scroll-padding-top: calc(56px + env(safe-area-inset-top));
 }
-.sidebar { display: flex; flex-direction: column; gap: 12px; }
+.sidebar { display: flex; flex-direction: column; gap: var(--sp-3); }
 
 /* ---------- Stats ---------- */
-.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--sp-2); }
 .stat {
-  background: var(--panel); border: 1px solid var(--line-soft); border-radius: var(--radius);
-  padding: 10px 12px; display: flex; flex-direction: column; gap: 2px;
+  position: relative; background: var(--surface-1); border: 1px solid var(--border-soft);
+  border-radius: var(--r-lg); padding: var(--sp-3) var(--sp-4);
+  display: flex; flex-direction: column; gap: 2px; box-shadow: var(--shadow-sm);
 }
-.lbl { font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 650; }
-.stat strong { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-.stat.danger strong { color: var(--danger); }
-.stat.warn strong { color: var(--warn); }
+.stat::before {
+  content: ""; position: absolute; top: 0; left: var(--sp-4); right: var(--sp-4);
+  height: 2px; border-radius: 2px; background: transparent;
+}
+.stat.danger::before { background: var(--danger); }
+.stat.warn::before { background: var(--warn); }
+.lbl { font-size: var(--fs-100); letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--text-3); font-weight: var(--w-semibold); }
+.stat strong { font-size: var(--fs-700); font-weight: var(--w-bold); letter-spacing: var(--track-tight); font-variant-numeric: tabular-nums; line-height: 1.1; }
+.stat.danger strong { color: var(--danger-ink); }
+.stat.warn strong { color: var(--warn-ink); }
 
-/* ---------- Tabs ---------- */
-.toolbar { display: flex; align-items: center; gap: 8px; padding: 10px 0 4px; }
-.tabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; flex: 1; min-width: 0; mask-image: linear-gradient(90deg, #000 88%, transparent); padding-right: 18px; }
+/* ---------- Toolbar ---------- */
+.toolbar { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-3) 0 var(--sp-1); }
+.tabs {
+  display: flex; gap: var(--sp-1); overflow-x: auto; scrollbar-width: none;
+  flex: 1; min-width: 0; overscroll-behavior-x: contain;
+  -webkit-mask-image: none; mask-image: none;
+  padding-right: var(--sp-1);
+}
+.tabs.scrollable {
+  -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent);
+  mask-image: linear-gradient(90deg, #000 88%, transparent);
+  padding-right: var(--sp-6);
+}
 .tabs::-webkit-scrollbar { display: none; }
 .tab {
-  border: 1px solid transparent; background: transparent; color: var(--dim);
-  padding: 7px 13px; border-radius: 8px; font-size: 12.5px; font-weight: 600; white-space: nowrap; cursor: pointer;
+  border: 1px solid transparent; background: transparent; color: var(--text-2);
+  padding: var(--sp-2) var(--sp-3); min-height: var(--target-min); border-radius: var(--r-sm);
+  font-size: var(--fs-300); font-weight: var(--w-semibold); white-space: nowrap; cursor: pointer;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease);
 }
-.tab.active { color: var(--text); background: var(--panel-2); border-color: var(--line); }
+.tab.active { color: var(--text-1); background: var(--surface-2); border-color: var(--border); }
+.tab:hover { color: var(--text-1); background: var(--surface-2); }
+
 .ghost-btn {
-  background: transparent; border: 1px solid var(--line); color: var(--dim);
-  padding: 7px 11px; border-radius: 8px; font-size: 12px; cursor: pointer; white-space: nowrap;
-  flex-shrink: 0;
+  background: transparent; border: 1px solid var(--border-soft); color: var(--text-2);
+  padding: var(--sp-2) var(--sp-3); min-height: var(--target-min); border-radius: var(--r-sm);
+  font-size: var(--fs-200); font-weight: var(--w-medium); cursor: pointer; white-space: nowrap; flex-shrink: 0;
+  transition: color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease);
 }
-.ghost-btn:hover { color: var(--text); border-color: var(--accent); }
+.ghost-btn:hover { color: var(--text-1); border-color: var(--border); }
 
 /* ---------- List head ---------- */
-.list-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 6px 0 2px; }
-.list-head h2 { margin: 0; font-size: 17px; font-weight: 650; letter-spacing: -0.01em; }
-.list-head .muted { font-size: 11.5px; white-space: nowrap; }
-.note { margin: 0 0 8px; font-size: 11.5px; color: var(--muted); }
+.list-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-3); flex-wrap: wrap; margin: var(--sp-1) 0 var(--sp-1); }
+.list-head h2 { margin: 0; font-size: var(--fs-600); font-weight: var(--w-semibold); letter-spacing: var(--track-snug); }
+.list-head .muted { font-size: var(--fs-200); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.note { margin: 0 0 var(--sp-2); font-size: var(--fs-200); color: var(--text-3); }
 
 /* ---------- Assignment rows ---------- */
-.assignment-list { display: flex; flex-direction: column; gap: 6px; }
+.assignment-list { display: flex; flex-direction: column; gap: var(--sp-2); }
 .row {
-  display: flex; align-items: center; gap: 10px;
-  background: var(--panel); border: 1px solid var(--line-soft); border-radius: var(--radius);
-  padding: 10px 12px; transition: border-color .15s;
+  display: flex; align-items: center; gap: var(--sp-3);
+  background: var(--surface-1); border: 1px solid var(--border-soft);
+  border-radius: var(--r-lg);
+  padding: var(--sp-3); box-shadow: var(--shadow-sm);
+  transition: border-color var(--dur-2) var(--ease), box-shadow var(--dur-2) var(--ease);
 }
-.row:hover { border-color: var(--line); }
-.row.overdue { border-left: 3px solid var(--danger); }
-.row.done { opacity: 0.78; }
-.row.done .row-meta { color: var(--dim); }
-.row.done .row-title { text-decoration: line-through; text-decoration-color: rgba(233,237,242,.3); }
+.row:hover { border-color: var(--accent-line); }
+.row.overdue { box-shadow: inset 3px 0 0 var(--danger), var(--shadow-sm); }
+.row.is-done .row-title, .row.is-done .row-meta { color: var(--text-3); }
+.row.is-done .row-title { text-decoration: line-through; text-decoration-color: var(--text-3); }
 
 .badge {
-  flex-shrink: 0; min-width: 66px; text-align: center;
-  font-size: 10px; font-weight: 650; letter-spacing: 0.02em;
-  padding: 4px 8px; border-radius: 6px; border: 1px solid transparent;
-  color: var(--dim); background: rgba(255,255,255,.03);
+  flex-shrink: 0; min-width: 68px; text-align: center;
+  font-size: var(--fs-100); font-weight: var(--w-semibold); letter-spacing: 0.02em;
+  padding: var(--sp-1) var(--sp-2); border-radius: var(--r-xs);
+  border: 1px solid transparent; color: var(--text-2); background: var(--surface-2);
 }
-.badge.overdue { color: #ff8d85; border-color: rgba(240,104,95,.35); background: rgba(240,104,95,.08); }
-.badge.today { color: #ffd479; border-color: rgba(226,182,75,.35); background: rgba(226,182,75,.08); }
-.badge.soon { color: var(--accent); border-color: rgba(79,142,247,.3); background: rgba(79,142,247,.08); }
-.badge.done { color: var(--ok); border-color: rgba(60,207,145,.3); background: rgba(60,207,145,.08); }
-.badge.past { color: var(--muted); border-color: var(--line-soft); }
+.badge.overdue { color: var(--danger-ink); border-color: var(--danger-line); background: var(--danger-soft); }
+.badge.today { color: var(--warn-ink); border-color: var(--warn-line); background: var(--warn-soft); }
+.badge.soon { color: var(--accent-hi); border-color: var(--accent-line); background: var(--accent-soft); }
+.badge.done { color: var(--ok); border-color: var(--ok-line); background: var(--ok-soft); }
+.badge.past { color: var(--text-3); border-color: var(--border-soft); background: transparent; }
 
 .row-body { min-width: 0; flex: 1; }
-.row-title { margin: 0; font-size: 13.5px; font-weight: 600; line-height: 1.35; }
-.row-meta { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 3px; font-size: 11px; color: var(--dim); }
-.row-meta .course { color: var(--accent); font-weight: 600; }
+.row-title { margin: 0; font-size: var(--fs-300); font-weight: var(--w-semibold); line-height: 1.35; }
+.row-meta { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-3); margin-top: var(--sp-1); font-size: var(--fs-200); color: var(--text-2); font-variant-numeric: tabular-nums; }
+.row-meta .course { color: var(--accent-hi); font-weight: var(--w-semibold); }
 
 .row-check {
-  flex-shrink: 0; width: 32px; height: 32px; border-radius: 8px;
-  border: 1px solid var(--line); background: transparent; color: #5f6875;
-  display: grid; place-items: center; cursor: pointer; color: var(--dim);
+  flex-shrink: 0; width: var(--target-min); height: var(--target-min);
+  border-radius: var(--r-sm); border: 1px solid var(--border-soft);
+  background: transparent; color: var(--text-3);
+  display: grid; place-items: center; cursor: pointer;
+  transition: color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease), background var(--dur-1) var(--ease);
 }
-.row-check svg { width: 17px; height: 17px; opacity: 1; }
-.row-check:hover { color: var(--ok); border-color: rgba(60,207,145,.45); background: rgba(60,207,145,.08); }
-.row-check.on { color: var(--ok); border-color: rgba(60,207,145,.45); background: rgba(60,207,145,.14); }
-.row-check.on svg { opacity: 1; }
+.row-check svg { width: 18px; height: 18px; }
+.row-check:hover { color: var(--ok); border-color: var(--ok-line); background: var(--ok-soft); }
+.row-check.on { color: var(--ok); border-color: var(--ok-line); background: var(--ok-soft); }
 
-.empty { text-align: center; padding: 40px 20px; color: var(--muted); }
-.empty-icon { font-size: 32px; color: var(--ok); margin-bottom: 8px; }
-.empty p { margin: 0 0 4px; color: var(--dim); font-weight: 600; }
-.empty span { font-size: 12px; }
+.empty { text-align: center; padding: var(--sp-8) var(--sp-4); color: var(--text-3); }
+.empty-icon {
+  width: 56px; height: 56px; margin: 0 auto var(--sp-3); border-radius: 50%;
+  background: var(--ok-soft); border: 1px solid var(--ok-line);
+  display: grid; place-items: center; color: var(--ok);
+}
+.empty-icon svg { width: 26px; height: 26px; }
+.empty p { margin: 0 0 var(--sp-1); color: var(--text-2); font-weight: var(--w-semibold); font-size: var(--fs-400); }
+.empty span { font-size: var(--fs-200); }
+
+.error-panel { text-align: center; padding: var(--sp-6) var(--sp-4); background: var(--surface-1); border: 1px solid var(--danger-line); border-radius: var(--r-lg); }
+.error-panel h3 { margin: 0 0 var(--sp-2); font-size: var(--fs-500); }
+.error-panel p { margin: 0 0 var(--sp-4); color: var(--text-2); font-size: var(--fs-300); }
 
 /* ---------- Connection footer ---------- */
 .conn {
-  display: flex; flex-wrap: wrap; gap: 4px 16px;
-  margin-top: 10px; padding: 10px 12px;
-  background: var(--panel); border: 1px solid var(--line-soft); border-radius: var(--radius);
-  font-size: 11px; color: var(--muted);
+  display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-4);
+  margin-top: var(--sp-3); padding: var(--sp-3) var(--sp-4);
+  background: var(--surface-1); border: 1px solid var(--border-soft); border-radius: var(--r-lg);
+  font-size: var(--fs-200); color: var(--text-3);
 }
-.conn b { color: var(--dim); font-weight: 600; }
-.error { flex-basis: 100%; margin: 4px 0 0; color: var(--danger); font-size: 11.5px; }
+.conn b { color: var(--text-2); font-weight: var(--w-semibold); font-variant-numeric: tabular-nums; }
+.error { flex-basis: 100%; margin: var(--sp-1) 0 0; color: var(--danger-ink); font-size: var(--fs-200); }
 
 /* ---------- Panels ---------- */
 .panel {
-  background: var(--panel); border: 1px solid var(--line-soft); border-radius: var(--radius); padding: 12px;
+  background: var(--surface-1); border: 1px solid var(--border-soft);
+  border-radius: var(--r-lg); padding: var(--sp-3) var(--sp-4); box-shadow: var(--shadow-sm);
 }
-.panel h3 { margin: 0 0 8px; font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 650; }
+.panel-title { margin: 0 0 var(--sp-2); font-size: var(--fs-100); letter-spacing: var(--track-caps); text-transform: uppercase; color: var(--text-3); font-weight: var(--w-semibold); }
 
-.next { margin: 0 0 8px; font-size: 12px; color: var(--dim); }
-.next strong { color: var(--accent); }
+.next { margin: 0 0 var(--sp-2); font-size: var(--fs-200); color: var(--text-2); }
+.next strong { color: var(--accent-hi); font-weight: var(--w-semibold); }
+.today-cue { color: var(--text-3); font-size: var(--fs-100); text-transform: uppercase; letter-spacing: var(--track-caps); margin-left: var(--sp-1); }
 
 .week { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
-.week li { display: grid; grid-template-columns: 34px 1fr; gap: 8px; padding: 5px 0; border-top: 1px solid var(--line-soft); }
+.week li { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: var(--sp-2); padding: var(--sp-2) var(--sp-1); border-top: 1px solid var(--border-soft); align-items: baseline; }
+.week li.today { background: rgba(79, 142, 247, 0.06); border-radius: var(--r-sm); }
 .week li:first-child { border-top: 0; padding-top: 0; }
-.week .day { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; color: var(--muted); padding-top: 1px; }
-.week li.today .day { color: var(--accent); }
-.week .cls { display: flex; gap: 7px; font-size: 11px; line-height: 1.35; padding: 1px 0; }
-.week .time { color: var(--accent); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.week .room { color: var(--muted); margin-left: auto; }
-.week .none { color: var(--muted); font-size: 11px; }
+.week .day { font-size: var(--fs-100); font-weight: var(--w-semibold); letter-spacing: var(--track-caps); color: var(--text-3); padding-top: 1px; }
+.week li.today .day { color: var(--accent-hi); }
+.week .cls { display: flex; flex-wrap: nowrap; gap: var(--sp-2); font-size: var(--fs-200); line-height: 1.35; padding: 1px 0; align-items: baseline; min-width: 0; }
+.week .cls .time { flex-shrink: 0; width: 118px; color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.week .cls .course-name { color: var(--text-1); font-weight: var(--w-medium); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.week .cls .room { color: var(--text-3); margin-left: auto; white-space: nowrap; }
+.week .none { color: var(--text-3); font-size: var(--fs-200); }
 
-.hint { margin: 6px 0; font-size: 12px; color: var(--dim); }
-.hint.small { font-size: 10.5px; color: var(--muted); margin-top: 8px; }
+.hint { margin: var(--sp-2) 0; font-size: var(--fs-200); color: var(--text-2); line-height: 1.5; }
+.hint.small { font-size: var(--fs-100); color: var(--text-3); margin-top: var(--sp-2); }
 
-.topic { display: flex; gap: 8px; align-items: center; }
+.topic { display: flex; gap: var(--sp-2); align-items: center; }
 .topic code {
-  flex: 1; min-width: 0; font-size: 12px; padding: 8px 10px;
-  background: var(--panel-2); border: 1px solid var(--line-soft); border-radius: 8px;
-  word-break: break-all; color: var(--dim);
+  flex: 1; min-width: 0; font-size: var(--fs-200); padding: var(--sp-2) var(--sp-3);
+  background: var(--surface-2); border: 1px solid var(--border-soft); border-radius: var(--r-sm);
+  overflow-wrap: anywhere; color: var(--text-2);
 }
-.topic-form { display: flex; gap: 8px; margin-top: 8px; }
+.topic-form { display: flex; gap: var(--sp-2); margin-top: var(--sp-2); }
 .topic-form input {
-  flex: 1; min-width: 0; background: var(--panel-2); border: 1px solid var(--line-soft);
-  border-radius: 8px; color: var(--text); padding: 8px 10px; font-size: 16px;
+  flex: 1; min-width: 0; min-height: var(--target-min); background: var(--surface-2); border: 1px solid var(--border-soft);
+  border-radius: var(--r-sm); color: var(--text-1); padding: var(--sp-2) var(--sp-3); font-size: 16px;
 }
+.topic-form input:focus-visible { box-shadow: var(--shadow-glow); border-color: var(--accent-line); }
 
 .mini {
-  border: 1px solid var(--line); background: transparent; color: var(--dim);
-  padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap;
+  border: 1px solid var(--border-soft); background: transparent; color: var(--text-2);
+  padding: var(--sp-2) var(--sp-3); min-height: var(--target-min); border-radius: var(--r-sm);
+  font-size: var(--fs-200); font-weight: var(--w-semibold); cursor: pointer; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: var(--sp-1);
+  transition: color var(--dur-1) var(--ease), border-color var(--dur-1) var(--ease), background var(--dur-1) var(--ease);
 }
-.mini.primary { color: #eaf1ff; border-color: rgba(79,142,247,.45); background: rgba(79,142,247,.16); }
-.mini.primary:hover { background: rgba(79,142,247,.26); }
-.mini:hover { color: var(--text); border-color: var(--accent); }
-.mini:disabled { opacity: .5; cursor: default; }
-.btn-row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
-.btn-row a { display: inline-flex; text-decoration: none; align-items: center; }
+.mini.primary {
+  color: #f4f8ff; border-color: transparent; background: var(--gradient-accent);
+  box-shadow: var(--shadow-glow); font-weight: var(--w-semibold);
+}
+.mini.primary:hover { background: var(--gradient-accent-hover); }
+.mini:hover { color: var(--text-1); border-color: var(--border); }
+.mini:disabled { opacity: 0.55; cursor: default; box-shadow: none; }
+.btn-row { display: flex; gap: var(--sp-2); margin-top: var(--sp-2); flex-wrap: wrap; }
+.btn-row a { text-decoration: none; }
 
 /* ---------- Toast ---------- */
-[hidden] { display: none !important; }
-
 .toast {
-  max-width: calc(100vw - 32px);
-  position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom)); transform: translate(-50%, 20px);
-  display: flex; align-items: center; gap: 10px; padding: 10px 14px;
-  background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px;
-  box-shadow: 0 12px 32px rgba(0,0,0,.45); font-size: 13px; z-index: 50;
-  opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none;
+  max-width: calc(100vw - var(--sp-8));
+  position: fixed; left: 50%; bottom: calc(var(--sp-4) + env(safe-area-inset-bottom));
+  transform: translate(-50%, var(--sp-5));
+  display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-3) var(--sp-4);
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-md);
+  box-shadow: var(--shadow-lg); font-size: var(--fs-300); z-index: 50;
+  opacity: 0; pointer-events: none;
+  transition: opacity var(--dur-3) var(--ease), transform var(--dur-3) var(--ease);
 }
 .toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+.toast button.dismiss { border: 0; background: transparent; color: var(--text-3); font-size: var(--fs-500); line-height: 1; cursor: pointer; padding: var(--sp-1); }
+.toast button.dismiss:hover { color: var(--text-1); }
+
+/* ---------- Offline banner ---------- */
+.offline-banner {
+  display: flex; align-items: center; gap: var(--sp-2);
+  background: var(--warn-soft); border: 1px solid var(--warn-line); border-radius: var(--r-sm);
+  color: var(--warn-ink); font-size: var(--fs-200); padding: var(--sp-2) var(--sp-3); margin-bottom: var(--sp-2);
+}
 
 /* ---------- Mobile ---------- */
 @media (max-width: 900px) {
-  .wrap { grid-template-columns: minmax(0, 1fr); padding: 12px; }
+  .wrap { grid-template-columns: minmax(0, 1fr); padding: var(--sp-3); padding-bottom: max(var(--sp-6), env(safe-area-inset-bottom)); }
   .sidebar { order: 2; }
 }
 
-@media (pointer: coarse) {
-  .tab, .mini, .ghost-btn { min-height: 44px; padding-top: 10px; padding-bottom: 10px; }
-  .row-check { width: 44px; height: 44px; }
-  .icon-btn { width: 44px; height: 44px; }
-}
-
 @media (max-width: 560px) {
-  .wrap { padding-left: max(10px, env(safe-area-inset-left)); padding-right: max(10px, env(safe-area-inset-right)); padding: 10px 10px 24px; gap: 12px; }
+  .wrap { gap: var(--sp-3); padding-left: max(var(--sp-2), env(safe-area-inset-left)); padding-right: max(var(--sp-2), env(safe-area-inset-right)); padding: var(--sp-2) max(var(--sp-2), env(safe-area-inset-left)) max(var(--sp-6), env(safe-area-inset-bottom)) max(var(--sp-2), env(safe-area-inset-right)); }
+  .topbar { padding: var(--sp-2) var(--sp-3); padding-top: max(var(--sp-2), env(safe-area-inset-top)); }
+  .brand-text p { display: none; }
+  .pill { font-size: var(--fs-100); }
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .stat strong { font-size: var(--fs-600); }
   .toolbar { flex-wrap: wrap; }
   .ghost-btn { width: 100%; text-align: center; }
-  .topbar { padding: 10px 12px; }
-  .brand-text p { display: none; }
-  .pill { font-size: 10px; padding: 4px 8px; }
-  .stats { grid-template-columns: repeat(2, 1fr); }
-  .stat strong { font-size: 20px; }
-  .list-head h2 { font-size: 15px; }
-  .row { padding: 9px 10px; gap: 8px; border-radius: 10px; }
-  .row-title { font-size: 12.5px; }
-  .badge { min-width: 56px; font-size: 9.5px; padding: 3px 6px; }
-  .note { font-size: 10.5px; }
-  .conn { font-size: 10px; gap: 4px 10px; }
+  .list-head h2 { font-size: var(--fs-500); }
+  .badge { min-width: 56px; }
 }
-
-</style>
+    </style>
   </head>
   <body>
     <a class="skip-link" href="#assignment-list">Skip to assignments</a>
+
     <header class="topbar">
       <div class="brand">
-        <svg viewBox="0 0 48 48" class="mark" aria-hidden="true">
-          <path d="M4 27h9l4-12 7 22 5-16 4 6h11" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
+        <span class="mark" aria-hidden="true">
+          <svg viewBox="0 0 48 48" role="img">
+            <path d="M6 27h9l4-13 7 22 5-16 4 7h11" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </span>
         <div class="brand-text">
           <h1>STI Pulse</h1>
-          <p>eLMS assignments, watched for you</p>
+          <p>STI assignment alerts from eLMS, in one place</p>
         </div>
       </div>
       <div class="topbar-actions">
-        <span class="pill" id="status-pill" title="Connection status">
+        <span class="pill" id="status-pill" title="Connection status" role="status" aria-live="polite">
           <span class="pill-dot"></span><span id="status-text">Connecting…</span>
         </span>
         <button class="icon-btn" id="refresh-btn" type="button" aria-label="Refresh now">
@@ -310,19 +446,26 @@ body {
     </header>
 
     <main class="wrap">
-      <section class="content">
+      <section class="content" aria-labelledby="assignments-heading">
+        <h2 class="visually-hidden" id="assignments-heading">Assignments</h2>
+
+        <div id="offline-banner" class="offline-banner" role="status" hidden>
+          You're offline — showing the copy saved
+          <b id="offline-age">recently</b>. Changes sync when you reconnect.
+        </div>
+
         <div class="stats" id="stats">
-          <div class="stat danger"><span class="lbl">Overdue</span><strong id="stat-overdue">–</strong></div>
-          <div class="stat warn"><span class="lbl">Due in 7 days</span><strong id="stat-week">–</strong></div>
+          <div class="stat"><span class="lbl">Overdue</span><strong id="stat-overdue">–</strong></div>
+          <div class="stat"><span class="lbl">Due in 7 days</span><strong id="stat-week">–</strong></div>
           <div class="stat"><span class="lbl">New</span><strong id="stat-new">–</strong></div>
-          <div class="stat"><span class="lbl">Tracked</span><strong id="stat-total">–</strong></div>
+          <div class="stat"><span class="lbl">Total</span><strong id="stat-total">–</strong></div>
         </div>
 
         <div class="toolbar">
-          <nav class="tabs" aria-label="Filter assignments">
+          <nav class="tabs" aria-label="Filter assignments" role="group">
             <button class="tab active" data-filter="upcoming" type="button" aria-pressed="true">Upcoming</button>
             <button class="tab" data-filter="overdue" type="button" aria-pressed="false">Overdue</button>
-            <button class="tab" data-filter="week" type="button" aria-pressed="false">Week</button>
+            <button class="tab" data-filter="week" type="button" aria-pressed="false">7 days</button>
             <button class="tab" data-filter="new" type="button" aria-pressed="false">New</button>
             <button class="tab" data-filter="done" type="button" aria-pressed="false">Done</button>
             <button class="tab" data-filter="all" type="button" aria-pressed="false">All</button>
@@ -331,54 +474,64 @@ body {
         </div>
 
         <div class="list-head">
-          <h2 id="list-title" aria-live="polite">Upcoming deadlines</h2>
+          <h2 id="list-title">Upcoming deadlines</h2>
           <span class="muted" id="last-checked">Checking…</span>
         </div>
-        <p class="note" id="list-note">Submission status from an eLMS snapshot.</p>
+        <p class="visually-hidden" id="list-status" aria-live="polite"></p>
+        <p class="note" id="list-note">Submission status from the latest eLMS sync.</p>
+
+        <div id="error-panel" class="error-panel" role="alert" hidden>
+          <h3>Can't reach eLMS yet</h3>
+          <p id="error-panel-text">Could not load assignment data. Check your connection, then retry.</p>
+          <button class="mini primary" id="error-retry" type="button">Retry</button>
+        </div>
 
         <div id="assignment-list" class="assignment-list" tabindex="-1"></div>
-        <div id="empty" class="empty" hidden>
-          <div class="empty-icon" aria-hidden="true">✓</div>
-          <p>Nothing here</p>
-          <span>New posts will appear automatically.</span>
+        <div id="empty" class="empty" hidden role="status" aria-live="polite">
+          <div class="empty-icon" id="empty-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <p id="empty-title">All clear</p>
+          <span id="empty-sub">New eLMS posts will appear automatically.</span>
         </div>
 
         <footer class="conn">
           <span>Source <b id="feed-host">eLMS</b></span>
           <span>Last check <b id="feed-last">–</b></span>
-          <span>Next <b id="feed-next">–</b></span>
+          <span>Checks <b id="feed-next">Every 15 min</b></span>
           <span>Term ends <b id="term-end">–</b></span>
           <p class="error" id="feed-error" role="alert" hidden></p>
         </footer>
       </section>
 
-      <aside class="sidebar">
-        <section class="panel">
-          <h3>Class schedule</h3>
+      <aside class="sidebar" aria-label="Context panels">
+        <section class="panel" aria-labelledby="schedule-heading">
+          <h2 class="panel-title" id="schedule-heading">Class schedule</h2>
           <p class="next" id="next-class">—</p>
           <ol class="week" id="week"></ol>
         </section>
 
-        <section class="panel">
-          <h3>Get alerts</h3>
-          <p class="hint">Subscribe to this private topic in the <b>ntfy</b> app.</p>
+        <section class="panel" aria-labelledby="alerts-heading">
+          <h2 class="panel-title" id="alerts-heading">Get alerts</h2>
+          <p class="hint">In the free ntfy app, subscribe to your private topic:</p>
           <div class="topic">
             <code id="ntfy-topic">—</code>
             <button class="mini" id="copy-topic" type="button">Copy</button>
           </div>
           <form id="topic-form" class="topic-form" hidden>
-            <input id="topic-set" type="text" name="ntfy-topic" aria-label="ntfy topic" placeholder="Paste your ntfy topic" autocomplete="off" spellcheck="false" />
+            <label class="visually-hidden" for="topic-set">ntfy topic</label>
+            <input id="topic-set" name="ntfy-topic" type="text" autocomplete="off" spellcheck="false" placeholder="Paste your ntfy topic (e.g. sti-…)" />
             <button class="mini primary" type="submit">Save</button>
           </form>
           <div class="btn-row">
-            <a class="mini" id="ntfy-link" href="https://ntfy.sh" target="_blank" rel="noopener">Open ntfy</a>
+            <a class="mini" id="ntfy-link" href="https://ntfy.sh" target="_blank" rel="noopener">Open ntfy<span class="visually-hidden"> (opens in a new tab)</span></a>
             <button class="mini" id="test-notify" type="button">Send test</button>
           </div>
-          <p class="hint small">Keep it private. Reminders arrive 3 h before class.</p>
+          <p class="hint small">Anyone with this topic can read your alerts — don't share it. Class reminders arrive 3 hours before class.</p>
         </section>
 
-        <section class="panel">
-          <h3>This device</h3>
+        <section class="panel" aria-labelledby="device-heading">
+          <h2 class="panel-title" id="device-heading">This device</h2>
           <div class="btn-row">
             <button class="mini primary" id="enable-notifs" type="button">Enable alerts</button>
             <button class="mini" id="install-btn" type="button" hidden>Install app</button>
@@ -388,29 +541,68 @@ body {
       </aside>
     </main>
 
-    <div id="update-toast" class="toast" hidden role="status" aria-live="polite">
+    <div id="update-toast" class="toast" role="status" aria-live="polite">
       <span>A new version is ready.</span>
       <button class="mini primary" id="update-reload" type="button">Reload</button>
+      <button class="dismiss" id="update-dismiss" type="button" aria-label="Dismiss update notice">×</button>
     </div>
 
     <script type="module">
 const $ = (id) => document.getElementById(id);
 const DONE_KEY = "sti-done-v1";
 const DATA_CACHE = "sti-data-cache";
+const SCHEDULE_CACHE = "sti-schedule-cache";
 
 const storage = {
   get(key) { try { return localStorage.getItem(key); } catch { return null; } },
-  set(key, value) { try { localStorage.setItem(key, value); } catch { /* full or blocked */ } },
+  set(key, value) { try { localStorage.setItem(key, value); } catch { logWarn("storage set", key); } },
+  remove(key) { try { localStorage.removeItem(key); } catch { /* ignore */ } },
 };
+
+function logWarn(context, error) {
+  try { console.warn(`[STI Pulse] ${context}:`, error); } catch { /* never throw */ }
+}
+
+function isPlainObject(v) { return typeof v === "object" && v !== null && !Array.isArray(v); }
+
+function loadDone() {
+  try {
+    const parsed = JSON.parse(storage.get(DONE_KEY) || "{}");
+    if (!isPlainObject(parsed)) return {};
+    const out = {};
+    for (const [uid, value] of Object.entries(parsed)) {
+      if (typeof value === "string" || value === false) out[uid] = value;
+    }
+    return out;
+  } catch { return {}; }
+}
+function saveDone() { storage.set(DONE_KEY, JSON.stringify(state.done)); }
+
+function loadCachedJson() {
+  try {
+    const parsed = JSON.parse(storage.get(DATA_CACHE) || "null");
+    if (parsed && isPlainObject(parsed) && Array.isArray(parsed.assignments)) return parsed;
+    return null;
+  } catch { return null; }
+}
 
 const els = {
   pill: $("status-pill"),
   statusText: $("status-text"),
   list: $("assignment-list"),
   empty: $("empty"),
+  emptyTitle: $("empty-title"),
+  emptySub: $("empty-sub"),
+  emptyIcon: $("empty-icon"),
+  errorPanel: $("error-panel"),
+  errorPanelText: $("error-panel-text"),
+  errorRetry: $("error-retry"),
+  offlineBanner: $("offline-banner"),
+  offlineAge: $("offline-age"),
   listTitle: $("list-title"),
   listNote: $("list-note"),
   lastChecked: $("last-checked"),
+  listStatus: $("list-status"),
   feedHost: $("feed-host"),
   feedLast: $("feed-last"),
   feedNext: $("feed-next"),
@@ -426,17 +618,27 @@ const els = {
   installBtn: $("install-btn"),
   installHint: $("install-hint"),
   updateToast: $("update-toast"),
+  updateReload: $("update-reload"),
+  updateDismiss: $("update-dismiss"),
 };
 
 const IS_LOCAL = ["localhost", "127.0.0.1"].includes(location.hostname);
-const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const DAY_NAMES = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 const FILTER_TITLES = {
   upcoming: "Upcoming deadlines",
   overdue: "Overdue work",
   week: "Due in 7 days",
-  new: "New since your last look",
+  new: "New since you last looked",
   done: "Done & submitted",
   all: "All assignments",
+};
+const EMPTY_STATES = {
+  upcoming: { title: "All clear", sub: "New eLMS posts will appear here automatically." },
+  overdue: { title: "Nothing overdue", sub: "Everything past its due date is submitted or checked off." },
+  week: { title: "Nothing due this week", sub: "Your next 7 days are clear." },
+  new: { title: "All caught up", sub: "Nothing new since your last look." },
+  done: { title: "Nothing marked done yet", sub: "Tap the checkmark on any row to mark it done." },
+  all: { title: "No assignments yet", sub: "The eLMS feed will fill this in on the next poll." },
 };
 
 const state = {
@@ -446,24 +648,20 @@ const state = {
   termEnd: null,
   lastPoll: null,
   lastError: null,
-  lastAck: Number(storage.get("sti-last-ack") || 0),
+  offlineMode: false,
+  lastAck: Number.isFinite(Number(storage.get("sti-last-ack"))) ? Number(storage.get("sti-last-ack")) : 0,
   ntfyTopic: storage.get("sti-ntfy-topic") || "",
   done: loadDone(),
   submitted: {},
   submittedAt: null,
+  pollFailures: 0,
 };
 
-function loadDone() {
-  try { return JSON.parse(storage.get(DONE_KEY) || "{}") || {}; } catch { return {}; }
-}
-function saveDone() {
-  try { storage.set(DONE_KEY, JSON.stringify(state.done)); } catch { /* ignore */ }
-}
 function submittedInElms(item) { return Boolean(state.submitted[item.uid]?.submitted); }
 function isDone(item) {
   const m = state.done[item.uid];
   if (m === false) return false;
-  if (m) return true;
+  if (typeof m === "string") return true;
   return submittedInElms(item);
 }
 function toggleDone(item) {
@@ -490,17 +688,20 @@ function fmtDue(item) {
   return `${date}, ${d.toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" })}`;
 }
 function fmtRelative(iso) {
-  if (!iso) return "—";
-  const min = Math.round((Date.now() - new Date(iso).getTime()) / 60_000);
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return "—";
+  const min = Math.round((Date.now() - t) / 60_000);
   if (min < 1) return "just now";
   if (min < 60) return `${min} min ago`;
   const hr = Math.round(min / 60);
   if (hr < 24) return `${hr} hr ago`;
-  return new Date(iso).toLocaleString("en-PH", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  return new Date(t).toLocaleString("en-PH", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
 function badgeFor(item) {
-  if (isDone(item)) return { cls: "done", text: submittedInElms(item) && !state.done[item.uid] ? "Submitted" : "Done" };
+  if (isDone(item)) {
+    return { cls: "done", text: submittedInElms(item) && !state.done[item.uid] ? "Submitted" : "Done" };
+  }
   if (isOverdue(item)) {
     const days = Math.abs(daysUntil(item.due));
     return days > 30 ? { cls: "past", text: `${days}d ago` } : { cls: "overdue", text: days <= 1 ? "Overdue" : `${days}d late` };
@@ -540,6 +741,7 @@ function visibleItems() {
   return items;
 }
 
+/* ---------- Render ---------- */
 function renderStats() {
   const now = Date.now();
   const week = now + 7 * 86_400_000;
@@ -550,21 +752,39 @@ function renderStats() {
   $("stat-week").textContent = weekCount;
   $("stat-new").textContent = newCount;
   $("stat-total").textContent = state.assignments.length;
+  $("stat-overdue").closest(".stat").classList.toggle("danger", overdue > 0);
+  $("stat-week").closest(".stat").classList.toggle("warn", weekCount > 0);
 }
 
 function renderList() {
   const items = visibleItems();
   els.listTitle.textContent = FILTER_TITLES[state.filter] || "Assignments";
+  els.listStatus.textContent = items.length ? `${items.length} shown` : "Empty";
   els.list.innerHTML = "";
-  if (!items.length) { els.empty.hidden = false; return; }
-  els.empty.hidden = true;
+
+  const failedAndNoData = state.lastError && !state.assignments.length;
+  els.errorPanel.hidden = !failedAndNoData;
+  els.empty.hidden = items.length > 0 || failedAndNoData;
+
+  if (failedAndNoData) {
+    els.errorPanelText.textContent = state.lastError.includes("web page")
+      ? "The feed responded with a page instead of data — the site may be misconfigured. Try Refresh in a bit."
+      : "Could not reach the eLMS feed. Check your connection, then retry.";
+    return;
+  }
+  if (!items.length) {
+    const copy = EMPTY_STATES[state.filter] || EMPTY_STATES.upcoming;
+    els.emptyTitle.textContent = copy.title;
+    els.emptySub.textContent = copy.sub;
+    return;
+  }
 
   const frag = document.createDocumentFragment();
   for (const item of items) {
     const done = isDone(item);
     const badge = badgeFor(item);
     const row = document.createElement("article");
-    row.className = `row ${isOverdue(item) && !done ? "overdue" : ""} ${done ? "done" : ""}`.trim();
+    row.className = `row ${isOverdue(item) && !done ? "overdue" : ""} ${done ? "is-done" : ""}`.trim();
 
     const badgeEl = document.createElement("span");
     badgeEl.className = `badge ${badge.cls}`.trim();
@@ -598,14 +818,15 @@ function renderList() {
     check.className = `row-check${done ? " on" : ""}`;
     check.title = done ? "Mark as not done" : "Mark as done";
     check.setAttribute("aria-pressed", done ? "true" : "false");
-    check.setAttribute("aria-label", `${done ? "Unmark" : "Mark"} ${item.title} as ${done ? "not done" : "done"}`);
+    check.setAttribute("aria-label", `Mark "${item.title}" as ${done ? "not done" : "done"}`);
     check.dataset.uid = item.uid;
-    check.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.5l5 5L19.5 6.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    check.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4" fill="none" stroke="currentColor" stroke-width="2"/><path class="check-path" d="M8.5 12.5l2.5 2.5L15.5 9.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     check.addEventListener("click", () => {
       toggleDone(item);
-      renderAll();
+      renderList();
+      renderStats();
       const btn = els.list.querySelector(`[data-uid="${CSS.escape(item.uid)}"]`);
-      (btn || els.list).focus();
+      (btn || els.list).focus({ preventScroll: true });
     });
 
     row.append(badgeEl, body, check);
@@ -614,9 +835,10 @@ function renderList() {
   els.list.append(frag);
 }
 
-function minutes(hhmm) { const [h, m] = hhmm.split(":").map(Number); return h * 60 + m; }
+function minutes(hhmm) { const [h, m] = String(hhmm).split(":").map(Number); return (Number.isFinite(h) ? h : 0) * 60 + (Number.isFinite(m) ? m : 0); }
 function fmtClock(hhmm) {
-  const [h, m] = hhmm.split(":").map(Number);
+  const [h, m] = String(hhmm).split(":").map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return String(hhmm);
   const suffix = h >= 12 ? "PM" : "AM";
   const hour = h % 12 === 0 ? 12 : h % 12;
   return `${hour}:${String(m).padStart(2, "0")} ${suffix}`;
@@ -660,6 +882,7 @@ function renderSchedule() {
     const head = document.createElement("div");
     head.className = "day";
     head.textContent = DAY_NAMES[day];
+    head.title = "Day";
     const col = document.createElement("div");
     const classes = SCHEDULE[day] || [];
     if (!classes.length) {
@@ -674,12 +897,13 @@ function renderSchedule() {
         const time = document.createElement("span");
         time.className = "time";
         time.textContent = `${fmtClock(item.from)}–${fmtClock(item.to)}`;
-        const title = document.createElement("span");
-        title.textContent = item.course;
+        const course = document.createElement("span");
+        course.className = "course-name";
+        course.textContent = item.course;
         const room = document.createElement("span");
         room.className = "room";
         room.textContent = item.room || "";
-        row.append(time, title, room);
+        row.append(time, course, room);
         col.append(row);
       }
     }
@@ -690,137 +914,182 @@ function renderSchedule() {
 }
 
 function renderStatus() {
-  const ok = !state.lastError && state.lastPoll;
-  els.pill.classList.toggle("ok", Boolean(ok));
+  const stale = state.lastError || !state.lastPoll;
+  els.pill.classList.toggle("ok", !stale);
   els.pill.classList.toggle("bad", Boolean(state.lastError));
-  els.statusText.textContent = state.lastError ? "Feed problem" : ok ? "Connected" : "Connecting…";
+  els.statusText.textContent = state.lastError
+    ? "Connection problem"
+    : state.lastPoll
+      ? "Connected"
+      : "Connecting…";
   els.feedLast.textContent = state.lastPoll ? fmtRelative(state.lastPoll) : "—";
-  els.feedNext.textContent = state.staticMode ? "every 15 min" : "—";
+  els.feedNext.textContent = state.staticMode ? "Every 15 min" : "On demand";
   els.feedError.hidden = !state.lastError;
-  els.feedError.textContent = state.lastError || "";
-  els.termEnd.textContent = state.termEnd ? new Date(state.termEnd).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" }) : "—";
+  els.feedError.textContent = state.lastError
+    ? "eLMS is not responding right now. Showing your last saved copy."
+    : "";
+  els.termEnd.textContent = state.termEnd && Number.isFinite(new Date(state.termEnd).getTime())
+    ? new Date(state.termEnd).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })
+    : "—";
   els.lastChecked.textContent = state.lastPoll ? `Checked ${fmtRelative(state.lastPoll)}` : "Checking…";
   els.listNote.textContent = state.submittedAt
-    ? `Submission status from eLMS snapshot checked ${new Date(state.submittedAt).toLocaleDateString("en-PH", { month: "short", day: "numeric" })}.`
-    : "Submission status unavailable — tap a row's check to mark done.";
+    ? `Done status from the latest eLMS sync (${new Date(state.submittedAt).toLocaleDateString("en-PH", { month: "short", day: "numeric" })}). Tap a checkmark to override.`
+    : "Submission status unavailable — tap the checkmark to mark done.";
+  els.offlineBanner.hidden = !state.offlineMode;
+  if (state.offlineMode && state.lastPoll) {
+    els.offlineAge.textContent = fmtRelative(state.lastPoll);
+  }
 }
 
 function renderTopic() {
   const topic = state.ntfyTopic;
   els.ntfyTopic.textContent = topic || "Not set on this device";
   els.ntfyLink.href = topic ? `https://ntfy.sh/${encodeURIComponent(topic)}` : "https://ntfy.sh";
-  if (document.activeElement !== els.ntfyInput && document.activeElement !== $("ntfy-topic")) {
+  if (document.activeElement !== els.ntfyInput) {
     els.ntfyInput.value = topic;
   }
   const copyBtn = $("copy-topic");
   if (copyBtn) copyBtn.disabled = !topic;
 }
 
-function renderAll() { renderStats(); renderSchedule(); renderList(); renderStatus(); renderTopic(); }
+function renderAll() {
+  renderStats();
+  renderSchedule();
+  renderList();
+  renderStatus();
+  renderTopic();
+}
 
+/* ---------- Data loading ---------- */
 async function loadSchedule() {
   try {
-    const res = await fetch(`schedule.json?t=${Date.now()}`, { cache: "no-store" });
-    if (!res.ok) throw new Error("schedule unavailable");
-    SCHEDULE = (await res.json()).days || {};
-  } catch { /* keep cached */ }
+    const res = await fetch("schedule.json", { cache: "no-cache" });
+    const text = await res.text();
+    const data = JSON.parse(text);
+    if (!isPlainObject(data.days)) throw new Error("bad schedule shape");
+    SCHEDULE = data.days;
+    storage.set(SCHEDULE_CACHE, text);
+  } catch (error) {
+    logWarn("schedule load", error);
+    try {
+      const cached = JSON.parse(storage.get(SCHEDULE_CACHE) || "null");
+      if (isPlainObject(cached?.days)) SCHEDULE = cached.days;
+    } catch { /* keep empty */ }
+  }
 }
+
 async function loadSubmitted() {
   try {
-    const res = await fetch(`submitted.json?t=${Date.now()}`, { cache: "no-store" });
-    if (!res.ok) throw new Error("snapshot unavailable");
-    const data = await res.json();
-    state.submitted = data.items || {};
+    const res = await fetch("submitted.json", { cache: "no-cache" });
+    const text = await res.text();
+    const data = JSON.parse(text);
+    if (!isPlainObject(data.items)) throw new Error("bad snapshot shape");
+    state.submitted = data.items;
     state.submittedAt = data.checkedAt || null;
-  } catch { state.submitted = {}; state.submittedAt = null; }
+  } catch (error) {
+    logWarn("submission snapshot load", error);
+  }
+}
+
+async function fetchDataJson() {
+  const res = await fetch("data.json", { cache: "no-cache" });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (text.trim().startsWith("<")) throw new Error("data.json unavailable (got a web page instead of data)");
+  const data = JSON.parse(text);
+  if (!isPlainObject(data) || !Array.isArray(data.assignments)) {
+    throw new Error("data.json has an unexpected shape");
+  }
+  return data;
 }
 
 async function loadData() {
-  let data;
-  let fromCache = false;
   try {
-    const res = await fetch(`data.json?t=${Date.now()}`, { cache: "no-store" });
-    const text = await res.text();
-    if (!res.ok || text.trim().startsWith("<")) throw new Error("data.json unavailable (got a web page instead of data)");
-    data = JSON.parse(text);
-    try { storage.set(DATA_CACHE, text); } catch { /* full */ }
+    const data = await fetchDataJson();
+    storage.set(DATA_CACHE, JSON.stringify(data));
+    state.assignments = data.assignments;
+    state.lastPoll = data.lastPoll || null;
+    state.lastError = data.lastError || null;
+    state.termEnd = data.termEnd || null;
+    state.offlineMode = false;
+    state.pollFailures = 0;
   } catch (error) {
-    try {
-      const cached = JSON.parse(storage.get(DATA_CACHE) || "null");
-      if (cached && Array.isArray(cached.assignments)) {
-        data = cached;
-        fromCache = true;
-        state.lastError = `Offline copy — updated ${new Date(cached.generatedAt || cached.lastPoll).toLocaleString("en-PH", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`;
-      } else throw error;
-    } catch { throw error; }
-  }
-  state.assignments = data.assignments || [];
-  state.lastPoll = data.lastPoll || null;
-  if (!fromCache) state.lastError = data.lastError || null;
-  state.termEnd = data.termEnd || null;
-  els.feedHost.textContent = IS_LOCAL ? "eLMS (local)" : "eLMS (via GitHub)";
-  els.topicForm.hidden = false;
-  if (!state.lastAck && state.assignments.length) {
-    const newest = Math.max(
-      0,
-      ...state.assignments.map((a) => new Date(a.firstSeen).getTime()).filter(Number.isFinite)
-    );
-    if (newest) {
-      state.lastAck = newest;
-      storage.set("sti-last-ack", String(state.lastAck));
+    logWarn("data load", error);
+    state.pollFailures += 1;
+    const cached = loadCachedJson();
+    if (cached) {
+      state.assignments = cached.assignments;
+      state.lastPoll = cached.generatedAt || cached.lastPoll || null;
+      state.lastError = String(error?.message || error);
+      state.termEnd = cached.termEnd || null;
+      state.offlineMode = true;
+    } else {
+      state.assignments = [];
+      state.lastPoll = null;
+      state.lastError = String(error?.message || error);
+      state.offlineMode = true;
     }
+    return;
   }
+  els.feedHost.textContent = "eLMS";
 }
 
 async function load() {
-  await Promise.all([loadSchedule(), loadSubmitted()]);
-  await loadData();
+  await Promise.all([loadSchedule(), loadSubmitted(), loadData()]);
+  els.feedHost.textContent = "eLMS";
+  pruneDoneKeys();
   renderAll();
 }
 
-function renderNotifState() {
-  const btn = els.enableNotifs;
-  if (!btn) return;
-  if (!("Notification" in window)) { btn.textContent = "Not supported"; btn.disabled = true; return; }
-  if (Notification.permission === "granted") { btn.textContent = "Alerts on ✓"; btn.disabled = true; return; }
-  if (Notification.permission === "denied") {
-    btn.textContent = "Permission denied";
-    btn.disabled = true;
-    els.installHint.textContent = "Alerts blocked — enable them for this site in browser settings.";
+function pruneDoneKeys() {
+  const feedUids = new Set(state.assignments.map((a) => a.uid));
+  let changed = false;
+  for (const uid of Object.keys(state.done)) {
+    if (!feedUids.has(uid)) {
+      delete state.done[uid];
+      changed = true;
+    }
   }
+  if (changed) saveDone();
 }
 
-/* ---------- Bind events ---------- */
+/* ---------- UI events ---------- */
 document.querySelectorAll(".tab").forEach((tab) => {
   tab.addEventListener("click", () => {
     document.querySelectorAll(".tab").forEach((t) => {
-      t.classList.toggle("active", t === tab);
-      t.setAttribute("aria-pressed", t === tab ? "true" : "false");
+      const on = t === tab;
+      t.classList.toggle("active", on);
+      t.setAttribute("aria-pressed", on ? "true" : "false");
     });
     state.filter = tab.dataset.filter;
     renderList();
   });
 });
 
-$("refresh-btn").addEventListener("click", async () => {
-  const btn = $("refresh-btn");
-  btn.disabled = true;
+const refreshBtn = $("refresh-btn");
+refreshBtn.addEventListener("click", async () => {
+  refreshBtn.disabled = true;
   try {
-    const res = await fetch(`data.json?t=${Date.now()}`, { cache: "no-store" });
-    const text = await res.text();
-    if (!res.ok || text.trim().startsWith("<")) throw new Error("refresh failed");
-    const data = JSON.parse(text);
-    storage.set(DATA_CACHE, text);
-    state.assignments = data.assignments || [];
+    const data = await fetchDataJson();
+    storage.set(DATA_CACHE, JSON.stringify(data));
+    state.assignments = data.assignments;
     state.lastPoll = data.lastPoll || null;
     state.lastError = data.lastError || null;
     state.termEnd = data.termEnd || null;
+    state.offlineMode = false;
+    state.pollFailures = 0;
     renderAll();
-  } catch (e) {
-    state.lastError = String(e?.message || e);
+  } catch (error) {
+    logWarn("manual refresh", error);
+    state.pollFailures += 1;
+    state.lastError = String(error?.message || error);
     renderStatus();
-  } finally { btn.disabled = false; }
+  } finally {
+    refreshBtn.disabled = false;
+  }
 });
+
+$("error-retry").addEventListener("click", () => { load(); });
 
 $("ack-btn").addEventListener("click", () => {
   state.lastAck = Date.now();
@@ -830,25 +1099,39 @@ $("ack-btn").addEventListener("click", () => {
 
 $("copy-topic").addEventListener("click", async () => {
   const btn = $("copy-topic");
-  if (!state.ntfyTopic) { btn.textContent = "Set topic first"; setTimeout(() => (btn.textContent = "Copy"), 1600); return; }
-  const done = () => { btn.textContent = "Copied ✓"; setTimeout(() => (btn.textContent = "Copy"), 1600); };
+  if (!state.ntfyTopic) {
+    btn.textContent = "Set topic first";
+    setTimeout(() => (btn.textContent = "Copy"), 1600);
+    return;
+  }
+  const done = () => {
+    btn.textContent = "Copied ✓";
+    setTimeout(() => (btn.textContent = "Copy"), 1600);
+  };
   try {
-    if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(state.ntfyTopic);
-    else {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(state.ntfyTopic);
+      done();
+    } else {
       const ta = document.createElement("textarea");
       ta.value = state.ntfyTopic;
       ta.style.cssText = "position:fixed;opacity:0";
       document.body.append(ta);
       ta.select();
-      document.execCommand("copy");
+      let ok = false;
+      try { ok = document.execCommand("copy"); } catch { ok = false; }
       ta.remove();
+      if (ok) done(); else throw new Error("copy failed");
     }
-    done();
-  } catch { btn.textContent = "Failed"; setTimeout(() => (btn.textContent = "Copy"), 1600); }
+  } catch (error) {
+    logWarn("clipboard copy", error);
+    btn.textContent = "Failed";
+    setTimeout(() => (btn.textContent = "Copy"), 1600);
+  }
 });
 
-els.topicForm.addEventListener("submit", (e) => {
-  e.preventDefault();
+els.topicForm.addEventListener("submit", (event) => {
+  event.preventDefault();
   const topic = els.ntfyInput.value.trim();
   if (!topic) return;
   state.ntfyTopic = topic;
@@ -859,38 +1142,73 @@ els.topicForm.addEventListener("submit", (e) => {
 
 $("test-notify").addEventListener("click", async () => {
   const btn = $("test-notify");
-  if (!state.ntfyTopic) { btn.textContent = "Set a topic"; setTimeout(() => (btn.textContent = "Send test"), 1800); return; }
+  if (!state.ntfyTopic) {
+    btn.textContent = "Set a topic first";
+    setTimeout(() => (btn.textContent = "Send test"), 1800);
+    return;
+  }
   btn.disabled = true;
   try {
     const res = await fetch(`https://ntfy.sh/${encodeURIComponent(state.ntfyTopic)}`, {
       method: "POST",
       body: "STI Pulse test — if you see this, alerts work.",
     });
-    btn.textContent = res.ok ? "Sent ✓" : "Failed";
-  } catch { btn.textContent = "Failed"; }
+    const data = await res.json().catch(() => null);
+    btn.textContent = res.ok && data?.id ? "Sent ✓" : "Failed";
+  } catch (error) {
+    logWarn("test notification", error);
+    btn.textContent = "Failed";
+  }
   setTimeout(() => { btn.disabled = false; btn.textContent = "Send test"; }, 1800);
 });
 
 els.enableNotifs.addEventListener("click", async () => {
-  if (!("Notification" in window)) { els.enableNotifs.textContent = "Not supported"; return; }
-  const perm = await Notification.requestPermission();
+  if (!("Notification" in window)) {
+    els.enableNotifs.textContent = "Not supported";
+    return;
+  }
+  let perm = "default";
+  try { perm = await Notification.requestPermission(); } catch (error) { logWarn("notification permission", error); }
   renderNotifState();
-  if (perm === "granted") new Notification("STI Pulse", { body: "Alerts are on for this device.", icon: "icon-192.png" });
+  if (perm === "granted") {
+    try { new Notification("STI Pulse", { body: "Alerts are on for this device.", icon: "icon-192.png" }); } catch { /* platform-blocked */ }
+  }
 });
+
+function renderNotifState() {
+  const btn = els.enableNotifs;
+  if (!btn) return;
+  if (!("Notification" in window)) { btn.textContent = "Not supported"; btn.disabled = true; return; }
+  if (Notification.permission === "granted") {
+    btn.textContent = "Alerts on ✓";
+    btn.disabled = true;
+    return;
+  }
+  if (Notification.permission === "denied") {
+    btn.textContent = "Permission denied";
+    btn.disabled = true;
+    els.installHint.textContent = "Alerts blocked — enable them for this site in browser settings.";
+  }
+}
 
 /* ---------- Install prompt ---------- */
 let deferredPrompt = null;
-window.addEventListener("beforeinstallprompt", (e) => {
-  e.preventDefault();
-  deferredPrompt = e;
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  deferredPrompt = event;
   els.installBtn.hidden = false;
 });
 els.installBtn.addEventListener("click", async () => {
   if (!deferredPrompt) return;
-  deferredPrompt.prompt();
-  const { outcome } = await deferredPrompt.userChoice;
-  if (outcome === "accepted") els.installBtn.hidden = true;
+  try {
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === "accepted") els.installBtn.hidden = true;
+  } catch (error) {
+    logWarn("install prompt", error);
+  }
 });
+window.addEventListener("appinstalled", () => { els.installBtn.hidden = true; });
 if (window.matchMedia("(display-mode: standalone)").matches) {
   els.installBtn.hidden = true;
   els.installHint.textContent = "Installed. Open it like any app.";
@@ -901,8 +1219,7 @@ if ("serviceWorker" in navigator) {
   window.addEventListener("load", async () => {
     try {
       const reg = await navigator.serviceWorker.register("sw.js");
-      const notify = () => { els.updateToast.removeAttribute("hidden"); els.updateToast.classList.add("show"); };
-      if (reg.waiting) notify();
+      const notify = () => { els.updateToast.classList.add("show"); };
       reg.addEventListener("updatefound", () => {
         const installing = reg.installing;
         if (!installing) return;
@@ -910,34 +1227,71 @@ if ("serviceWorker" in navigator) {
           if (installing.state === "installed" && navigator.serviceWorker.controller) notify();
         });
       });
-    } catch { /* ignore */ }
+    } catch (error) {
+      logWarn("service worker registration", error);
+    }
   });
-  $("update-reload").addEventListener("click", () => window.location.reload());
+  els.updateReload.addEventListener("click", () => window.location.reload());
+  els.updateDismiss.addEventListener("click", () => els.updateToast.classList.remove("show"));
 }
 
+/* ---------- Tab overflow cue ---------- */
+function updateTabsCue() {
+  const tabs = document.querySelector(".tabs");
+  if (tabs) tabs.classList.toggle("scrollable", tabs.scrollWidth > tabs.clientWidth + 4);
+}
+window.addEventListener("resize", updateTabsCue);
+
 renderNotifState();
-load().catch((error) => { state.lastError = String(error?.message || error); renderAll(); });
+load().catch((error) => {
+  logWarn("load", error);
+  state.lastError = String(error?.message || error);
+  renderAll();
+});
+updateTabsCue();
 
 /* Keep data fresh while the app is open */
 setInterval(() => {
-  if (!state.staticMode) return;
-  fetch(`data.json?t=${Date.now()}`, { cache: "no-store" })
-    .then((r) => (r.ok ? r.text() : null))
+  if (document.hidden) return;
+  fetch("data.json", { cache: "no-cache" })
+    .then((r) => (r.ok ? r.text() : Promise.reject(new Error(`HTTP ${r.status}`))))
     .then((text) => {
-      if (!text || text.trim().startsWith("<")) return;
+      if (text.trim().startsWith("<")) throw new Error("got a web page instead of data");
       const data = JSON.parse(text);
-      const before = new Set(state.assignments.map((a) => a.uid));
-      const fresh = (data.assignments || []).filter((a) => !before.has(a.uid));
-      if (fresh.length) {
-        storage.set(DATA_CACHE, text);
+      if (!isPlainObject(data) || !Array.isArray(data.assignments)) return;
+      state.assignments = data.assignments;
+      state.lastPoll = data.lastPoll || null;
+      state.lastError = data.lastError || null;
+      state.offlineMode = false;
+      state.pollFailures = 0;
+      storage.set(DATA_CACHE, text);
+      renderAll();
+    })
+    .catch((error) => {
+      logWarn("background refresh", error);
+      state.pollFailures += 1;
+      if (state.pollFailures >= 2) state.lastError = "Background refresh failed repeatedly.";
+      renderStatus();
+    });
+}, 60_000);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) {
+    fetch("data.json", { cache: "no-cache" })
+      .then((r) => (r.ok ? r.text() : null))
+      .then((text) => {
+        if (!text || text.trim().startsWith("<")) return;
+        const data = JSON.parse(text);
+        if (!isPlainObject(data) || !Array.isArray(data.assignments)) return;
         state.assignments = data.assignments;
         state.lastPoll = data.lastPoll || null;
+        state.lastError = data.lastError || null;
+        state.offlineMode = false;
+        storage.set(DATA_CACHE, text);
         renderAll();
-      }
-    })
-    .catch(() => {});
-}, 60_000);
-
-</script>
+      })
+      .catch((error) => logWarn("visibility refresh", error));
+  }
+});
+    </script>
   </body>
 </html>

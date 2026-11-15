@@ -2,3 +2,10 @@ node_modules/
 public/data.json
 data/config.json
 *.log
+
+.env
+.env.*
+*.pem
+*.key
+Thumbs.db
+.DS_Store

@@ -49,7 +49,7 @@ function publicState() {
     termEnd: state.termEnd || null,
     assignments: state.assignments,
     config: {
-      ntfyTopic: config.ntfyTopic,
+      ntfyTopicSet: Boolean(config.ntfyTopic),
       pollMinutes: config.pollMinutes,
       dailyDigest: config.dailyDigest,
       feedUrlSet: Boolean(config.feedUrl),
@@ -202,14 +202,20 @@ function json(res, status, data) {
 
 function readJson(req) {
   return new Promise((resolve, reject) => {
-    let body = "";
+    const chunks = [];
+    let size = 0;
     req.on("data", (chunk) => {
-      body += chunk;
-      if (body.length > 100_000) reject(new Error("Body too large"));
+      size += chunk.length;
+      if (size > 100_000) {
+        reject(new Error("Body too large"));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
     });
     req.on("end", () => {
       try {
-        resolve(body ? JSON.parse(body) : {});
+        resolve(chunks.length ? JSON.parse(Buffer.concat(chunks).toString("utf8")) : {});
       } catch {
         reject(new Error("Invalid JSON"));
       }
@@ -301,7 +307,8 @@ const server = http.createServer(async (req, res) => {
   let filePath = path.join(publicDir, decodeURIComponent(url.pathname));
   if (url.pathname === "/") filePath = path.join(publicDir, "index.html");
   const resolved = path.resolve(filePath);
-  if (!resolved.startsWith(path.resolve(publicDir))) {
+  const rel = path.relative(path.resolve(publicDir), resolved);
+  if (rel.startsWith("..") || path.isAbsolute(rel)) {
     res.writeHead(403);
     return res.end("Forbidden");
   }
@@ -313,15 +320,17 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(200, {
       "content-type": MIME[path.extname(resolved)] || "application/octet-stream",
       "cache-control": resolved.endsWith("index.html") ? "no-cache" : "public, max-age=300",
+      "x-content-type-options": "nosniff",
     });
     res.end(data);
   });
 });
 
 const port = Number(process.env.PORT || config.port || 3030);
-server.listen(port, "0.0.0.0", async () => {
-  console.log(`STI Pulse running at http://localhost:${port}`);
-  console.log(`ntfy topic: ${config.ntfyTopic}`);
+const host = process.env.HOST || "127.0.0.1";
+server.listen(port, host, async () => {
+  console.log(`STI Pulse running at http://${host}:${port}`);
+  console.log(`ntfy topic: ${config.ntfyTopic ? "set (hidden)" : "not set"}`);
   schedule();
   await poll();
 });
