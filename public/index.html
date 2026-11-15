@@ -950,7 +950,10 @@ function renderStatus() {
 function renderTopic() {
   const topic = state.ntfyTopic;
   els.ntfyTopic.textContent = topic || "Not set on this device";
-  els.ntfyLink.href = topic ? `https://ntfy.sh/${encodeURIComponent(topic)}` : "https://ntfy.sh";
+  const isAndroid = /android/i.test(navigator.userAgent);
+  els.ntfyLink.href = topic
+    ? (isAndroid ? `ntfy://ntfy.sh/${encodeURIComponent(topic)}` : `https://ntfy.sh/${encodeURIComponent(topic)}`)
+    : "https://ntfy.sh";
   if (document.activeElement !== els.ntfyInput) {
     els.ntfyInput.value = topic;
   }
