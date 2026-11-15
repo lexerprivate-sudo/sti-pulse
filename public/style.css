@@ -256,14 +256,12 @@ body {
 }
 
 @media (max-width: 560px) {
-  .wrap { padding-left: max(10px, env(safe-area-inset-left)); padding-right: max(10px, env(safe-area-inset-right)); }
+  .wrap { padding-left: max(10px, env(safe-area-inset-left)); padding-right: max(10px, env(safe-area-inset-right)); padding: 10px 10px 24px; gap: 12px; }
   .toolbar { flex-wrap: wrap; }
   .ghost-btn { width: 100%; text-align: center; }
-}
   .topbar { padding: 10px 12px; }
   .brand-text p { display: none; }
   .pill { font-size: 10px; padding: 4px 8px; }
-  .wrap { padding: 10px 10px 24px; gap: 12px; }
   .stats { grid-template-columns: repeat(2, 1fr); }
   .stat strong { font-size: 20px; }
   .list-head h2 { font-size: 15px; }
