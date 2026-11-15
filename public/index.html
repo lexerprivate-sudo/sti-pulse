@@ -10,9 +10,10 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icon-192.png" />
-    <link rel="stylesheet" href="style.css?v=20" />
+    <link rel="stylesheet" href="style.css?v=21" />
   </head>
   <body>
+    <a class="skip-link" href="#assignment-list">Skip to assignments</a>
     <header class="topbar">
       <div class="brand">
         <svg viewBox="0 0 48 48" class="mark" aria-hidden="true">
@@ -42,23 +43,25 @@
           <div class="stat"><span class="lbl">Tracked</span><strong id="stat-total">–</strong></div>
         </div>
 
-        <nav class="tabs" role="tablist" aria-label="Filter assignments">
-          <button class="tab active" data-filter="upcoming" role="tab" aria-selected="true">Upcoming</button>
-          <button class="tab" data-filter="overdue" role="tab" aria-selected="false">Overdue</button>
-          <button class="tab" data-filter="week" role="tab" aria-selected="false">Week</button>
-          <button class="tab" data-filter="new" role="tab" aria-selected="false">New</button>
-          <button class="tab" data-filter="done" role="tab" aria-selected="false">Done</button>
-          <button class="tab" data-filter="all" role="tab" aria-selected="false">All</button>
+        <div class="toolbar">
+          <nav class="tabs" aria-label="Filter assignments">
+            <button class="tab active" data-filter="upcoming" type="button" aria-pressed="true">Upcoming</button>
+            <button class="tab" data-filter="overdue" type="button" aria-pressed="false">Overdue</button>
+            <button class="tab" data-filter="week" type="button" aria-pressed="false">Week</button>
+            <button class="tab" data-filter="new" type="button" aria-pressed="false">New</button>
+            <button class="tab" data-filter="done" type="button" aria-pressed="false">Done</button>
+            <button class="tab" data-filter="all" type="button" aria-pressed="false">All</button>
+          </nav>
           <button class="ghost-btn" id="ack-btn" type="button">Mark all seen</button>
-        </nav>
+        </div>
 
         <div class="list-head">
-          <h2 id="list-title">Upcoming deadlines</h2>
+          <h2 id="list-title" aria-live="polite">Upcoming deadlines</h2>
           <span class="muted" id="last-checked">Checking…</span>
         </div>
         <p class="note" id="list-note">Submission status from an eLMS snapshot.</p>
 
-        <div id="assignment-list" class="assignment-list" aria-live="polite"></div>
+        <div id="assignment-list" class="assignment-list" tabindex="-1"></div>
         <div id="empty" class="empty" hidden>
           <div class="empty-icon" aria-hidden="true">✓</div>
           <p>Nothing here</p>
@@ -70,7 +73,7 @@
           <span>Last check <b id="feed-last">–</b></span>
           <span>Next <b id="feed-next">–</b></span>
           <span>Term ends <b id="term-end">–</b></span>
-          <p class="error" id="feed-error" hidden></p>
+          <p class="error" id="feed-error" role="alert" hidden></p>
         </footer>
       </section>
 
@@ -89,7 +92,7 @@
             <button class="mini" id="copy-topic" type="button">Copy</button>
           </div>
           <form id="topic-form" class="topic-form" hidden>
-            <input id="topic-set" type="text" placeholder="Paste your ntfy topic" autocomplete="off" spellcheck="false" />
+            <input id="topic-set" type="text" name="ntfy-topic" aria-label="ntfy topic" placeholder="Paste your ntfy topic" autocomplete="off" spellcheck="false" />
             <button class="mini primary" type="submit">Save</button>
           </form>
           <div class="btn-row">
@@ -110,11 +113,11 @@
       </aside>
     </main>
 
-    <div id="update-toast" class="toast" hidden>
+    <div id="update-toast" class="toast" hidden role="status" aria-live="polite">
       <span>A new version is ready.</span>
       <button class="mini primary" id="update-reload" type="button">Reload</button>
     </div>
 
-    <script src="app.js?v=20" type="module"></script>
+    <script src="app.js?v=21" type="module"></script>
   </body>
 </html>

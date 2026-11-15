@@ -2,6 +2,11 @@ const $ = (id) => document.getElementById(id);
 const DONE_KEY = "sti-done-v1";
 const DATA_CACHE = "sti-data-cache";
 
+const storage = {
+  get(key) { try { return storage.get(key); } catch { return null; } },
+  set(key, value) { try { storage.set(key, value); } catch { /* full or blocked */ } },
+};
+
 const els = {
   pill: $("status-pill"),
   statusText: $("status-text"),
@@ -45,18 +50,18 @@ const state = {
   termEnd: null,
   lastPoll: null,
   lastError: null,
-  lastAck: Number(localStorage.getItem("sti-last-ack") || 0),
-  ntfyTopic: localStorage.getItem("sti-ntfy-topic") || "",
+  lastAck: Number(storage.get("sti-last-ack") || 0),
+  ntfyTopic: storage.get("sti-ntfy-topic") || "",
   done: loadDone(),
   submitted: {},
   submittedAt: null,
 };
 
 function loadDone() {
-  try { return JSON.parse(localStorage.getItem(DONE_KEY) || "{}") || {}; } catch { return {}; }
+  try { return JSON.parse(storage.get(DONE_KEY) || "{}") || {}; } catch { return {}; }
 }
 function saveDone() {
-  try { localStorage.setItem(DONE_KEY, JSON.stringify(state.done)); } catch { /* ignore */ }
+  try { storage.set(DONE_KEY, JSON.stringify(state.done)); } catch { /* ignore */ }
 }
 function submittedInElms(item) { return Boolean(state.submitted[item.uid]?.submitted); }
 function isDone(item) {
@@ -197,8 +202,10 @@ function renderList() {
     check.className = `row-check${done ? " on" : ""}`;
     check.title = done ? "Mark as not done" : "Mark as done";
     check.setAttribute("aria-pressed", done ? "true" : "false");
+    check.setAttribute("aria-label", `${done ? "Unmark" : "Mark"} ${item.title} as ${done ? "not done" : "done"}`);
+    check.dataset.uid = item.uid;
     check.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12.5l5 5L19.5 6.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-    check.addEventListener("click", () => { toggleDone(item); renderAll(); });
+    check.addEventListener("click", () => { toggleDone(item); renderAll(); els.list.querySelector(`[data-uid="${item.uid}"]`)?.focus(); });
 
     row.append(badgeEl, body, check);
     frag.append(row);
@@ -263,7 +270,15 @@ function renderSchedule() {
       for (const item of classes) {
         const row = document.createElement("div");
         row.className = "cls";
-        row.innerHTML = `<span class="time">${fmtClock(item.from)}–${fmtClock(item.to)}</span><span>${item.course}</span><span class="room">${item.room}</span>`;
+        const time = document.createElement("span");
+        time.className = "time";
+        time.textContent = `${fmtClock(item.from)}–${fmtClock(item.to)}`;
+        const title = document.createElement("span");
+        title.textContent = item.course;
+        const room = document.createElement("span");
+        room.className = "room";
+        room.textContent = item.room || "";
+        row.append(time, title, room);
         col.append(row);
       }
     }
@@ -324,10 +339,10 @@ async function loadData() {
     const text = await res.text();
     if (!res.ok || text.trim().startsWith("<")) throw new Error("data.json unavailable (got a web page instead of data)");
     data = JSON.parse(text);
-    try { localStorage.setItem(DATA_CACHE, text); } catch { /* full */ }
+    try { storage.set(DATA_CACHE, text); } catch { /* full */ }
   } catch (error) {
     try {
-      const cached = JSON.parse(localStorage.getItem(DATA_CACHE) || "null");
+      const cached = JSON.parse(storage.get(DATA_CACHE) || "null");
       if (cached && Array.isArray(cached.assignments)) {
         data = cached;
         state.lastError = `Offline copy — updated ${new Date(cached.generatedAt || cached.lastPoll).toLocaleString("en-PH", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`;
@@ -336,14 +351,20 @@ async function loadData() {
   }
   state.assignments = data.assignments || [];
   state.lastPoll = data.lastPoll || null;
-  if (!state.lastError) state.lastError = data.lastError;
+  state.lastError = data.lastError || null;
   state.termEnd = data.termEnd || null;
   els.feedHost.textContent = IS_LOCAL ? "eLMS (local)" : "eLMS (via GitHub)";
-  if (!state.ntfyTopic) state.ntfyTopic = localStorage.getItem("sti-ntfy-topic") || "";
+  if (!state.ntfyTopic) state.ntfyTopic = storage.get("sti-ntfy-topic") || "";
   if (els.topicForm) els.topicForm.hidden = false;
   if (!state.lastAck && state.assignments.length) {
-    state.lastAck = Math.max(...state.assignments.map((a) => new Date(a.firstSeen).getTime()));
-    localStorage.setItem("sti-last-ack", String(state.lastAck));
+    const newest = Math.max(
+      0,
+      ...state.assignments.map((a) => new Date(a.firstSeen).getTime()).filter(Number.isFinite)
+    );
+    if (newest) {
+      state.lastAck = newest;
+      storage.set("sti-last-ack", String(state.lastAck));
+    }
   }
 }
 
@@ -370,7 +391,7 @@ document.querySelectorAll(".tab").forEach((tab) => {
   tab.addEventListener("click", () => {
     document.querySelectorAll(".tab").forEach((t) => {
       t.classList.toggle("active", t === tab);
-      t.setAttribute("aria-selected", t === tab ? "true" : "false");
+      t.setAttribute("aria-pressed", t === tab ? "true" : "false");
     });
     state.filter = tab.dataset.filter;
     renderList();
@@ -385,7 +406,7 @@ $("refresh-btn").addEventListener("click", async () => {
     const text = await res.text();
     if (!res.ok || text.trim().startsWith("<")) throw new Error("refresh failed");
     const data = JSON.parse(text);
-    localStorage.setItem(DATA_CACHE, text);
+    storage.set(DATA_CACHE, text);
     state.assignments = data.assignments || [];
     state.lastPoll = data.lastPoll || null;
     state.lastError = data.lastError || null;
@@ -399,7 +420,7 @@ $("refresh-btn").addEventListener("click", async () => {
 
 $("ack-btn").addEventListener("click", () => {
   state.lastAck = Date.now();
-  localStorage.setItem("sti-last-ack", String(state.lastAck));
+  storage.set("sti-last-ack", String(state.lastAck));
   renderAll();
 });
 
@@ -427,7 +448,7 @@ els.topicForm.addEventListener("submit", (e) => {
   const topic = els.ntfyInput.value.trim();
   if (!topic) return;
   state.ntfyTopic = topic;
-  localStorage.setItem("sti-ntfy-topic", topic);
+  storage.set("sti-ntfy-topic", topic);
   renderTopic();
   els.ntfyInput.blur();
 });
@@ -485,9 +506,7 @@ if ("serviceWorker" in navigator) {
           if (installing.state === "installed" && navigator.serviceWorker.controller) notify();
         });
       });
-      navigator.serviceWorker.addEventListener("controllerchange", () => {
-        if (els.updateToast.classList.contains("show")) window.location.reload();
-      });
+      navigator.serviceWorker.addEventListener("controllerchange", () => window.location.reload());
     } catch { /* ignore */ }
   });
   $("update-reload").addEventListener("click", () => window.location.reload());
@@ -507,7 +526,7 @@ setInterval(() => {
       const before = new Set(state.assignments.map((a) => a.uid));
       const fresh = (data.assignments || []).filter((a) => !before.has(a.uid));
       if (fresh.length) {
-        localStorage.setItem(DATA_CACHE, text);
+        storage.set(DATA_CACHE, text);
         state.assignments = data.assignments;
         state.lastPoll = data.lastPoll || null;
         renderAll();

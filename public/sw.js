@@ -1,11 +1,21 @@
-const CACHE = "sti-pulse-v20";
-const SHELL = ["./", "style.css", "app.js", "manifest.webmanifest", "schedule.json", "icon.svg", "icon-192.png"];
+const CACHE = "sti-pulse-v21";
+const SHELL = [
+  "./",
+  "style.css?v=21",
+  "app.js?v=21",
+  "manifest.webmanifest",
+  "schedule.json",
+  "submitted.json",
+  "icon.svg",
+  "icon-192.png",
+  "icon-512.png",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(CACHE)
-      .then((cache) => cache.addAll(SHELL))
+      .then((cache) => Promise.allSettled(SHELL.map((url) => cache.add(url))))
       .then(() => self.skipWaiting())
       .catch(() => self.skipWaiting())
   );
@@ -77,7 +87,7 @@ self.addEventListener("fetch", (event) => {
           return response;
         })
         .catch(() => cached);
-      return cached || network;
+      return (cached || network).then((response) => response || new Response("Offline and unavailable", { status: 503, statusText: "Service Unavailable" }));
     })
   );
 });
