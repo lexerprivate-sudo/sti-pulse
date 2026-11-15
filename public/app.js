@@ -490,6 +490,17 @@ async function loadData() {
 }
 
 async function load() {
+  try {
+    const params = new URLSearchParams(location.search);
+    const ntfy = params.get("ntfy");
+    if (ntfy) {
+      state.ntfyTopic = ntfy.trim();
+      storage.set("sti-ntfy-topic", state.ntfyTopic);
+      params.delete("ntfy");
+      const clean = location.pathname + (params.toString() ? "?" + params.toString() : "");
+      history.replaceState(null, "", clean);
+    }
+  } catch { /* ignore */ }
   await Promise.all([loadSchedule(), loadSubmitted(), loadData()]);
   els.feedHost.textContent = "eLMS";
   pruneDoneKeys();
