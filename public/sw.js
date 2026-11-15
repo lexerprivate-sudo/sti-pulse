@@ -1,4 +1,4 @@
-const CACHE = "sti-pulse-v18";
+const CACHE = "sti-pulse-v19";
 const SHELL = ["./", "style.css", "app.js", "manifest.webmanifest", "schedule.json", "icon.svg", "icon-192.png"];
 
 self.addEventListener("install", (event) => {
@@ -25,12 +25,31 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
 
-  // Never cache API calls or the live data files.
-  if (
-    url.pathname.includes("/api/") ||
-    url.pathname.endsWith("data.json") ||
-    url.pathname.endsWith("submitted.json")
-  ) {
+  // Never cache API calls.
+  if (url.pathname.includes("/api/")) return;
+
+  // Live data (data.json / submitted.json): stale-while-revalidate.
+  if (url.pathname.endsWith("data.json") || url.pathname.endsWith("submitted.json")) {
+    const key = url.origin + url.pathname;
+    event.respondWith(
+      (async () => {
+        const cache = await caches.open(CACHE);
+        const cached = await cache.match(key);
+        const network = fetch(request).then((response) => {
+          if (response && response.ok) {
+            cache.put(key, response.clone()).catch(() => {});
+          }
+          return response;
+        }).catch(() => null);
+        if (cached) {
+          network.catch(() => {});
+          return cached;
+        }
+        const response = await network;
+        if (response) return response;
+        throw new Error("offline and no data cached yet");
+      })()
+    );
     return;
   }
 
