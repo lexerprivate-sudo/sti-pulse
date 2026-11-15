@@ -399,6 +399,11 @@ function renderTopic() {
   els.ntfyLink.href = topic ? `https://ntfy.sh/${encodeURIComponent(topic)}` : "https://ntfy.sh";
   els.ntfyInput.value = topic;
   $("topic-set").value = topic;
+  const copyBtn = $("copy-topic");
+  if (copyBtn) {
+    copyBtn.disabled = !topic;
+    copyBtn.classList.toggle("muted", !topic);
+  }
 }
 
 function renderAll() {
@@ -430,12 +435,35 @@ async function loadLocal() {
 }
 
 async function loadStatic() {
-  const res = await fetch(`data.json?t=${Date.now()}`, { cache: "no-store" });
-  if (!res.ok) throw new Error("data.json not found");
-  const data = await res.json();
+  let data;
+  try {
+    const res = await fetch(`data.json?t=${Date.now()}`, { cache: "no-store" });
+    const text = await res.text();
+    if (!res.ok || text.trim().startsWith("<")) {
+      throw new Error("data.json unavailable (got a web page instead of data)");
+    }
+    data = JSON.parse(text);
+    try {
+      localStorage.setItem("sti-data-cache", text);
+    } catch {
+      /* storage full */
+    }
+  } catch (error) {
+    try {
+      const cached = JSON.parse(localStorage.getItem("sti-data-cache") || "null");
+      if (cached && Array.isArray(cached.assignments)) {
+        data = cached;
+        state.lastError = `Using offline copy — last updated ${new Date(cached.generatedAt || cached.lastPoll).toLocaleString("en-PH")}`;
+      } else {
+        throw error;
+      }
+    } catch {
+      throw error;
+    }
+  }
   state.assignments = data.assignments || [];
   state.lastPoll = data.lastPoll;
-  state.lastError = data.lastError;
+  if (!state.lastError) state.lastError = data.lastError;
   state.lastAck = Number(localStorage.getItem("sti-last-ack") || 0);
   if (!state.lastAck && state.assignments.length) {
     const newest = Math.max(...state.assignments.map((a) => new Date(a.firstSeen).getTime()));
@@ -582,12 +610,33 @@ function bind() {
   });
 
   $("copy-topic").addEventListener("click", async () => {
+    const btn = $("copy-topic");
+    if (!state.ntfyTopic) {
+      btn.textContent = "Set topic first";
+      setTimeout(() => (btn.textContent = "Copy"), 1600);
+      return;
+    }
+    const done = () => {
+      btn.textContent = "Copied ✓";
+      setTimeout(() => (btn.textContent = "Copy"), 1600);
+    };
     try {
-      await navigator.clipboard.writeText(state.ntfyTopic);
-      $("copy-topic").textContent = "Copied";
-      setTimeout(() => ($("copy-topic").textContent = "Copy"), 1400);
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(state.ntfyTopic);
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = state.ntfyTopic;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.append(ta);
+        ta.select();
+        document.execCommand("copy");
+        ta.remove();
+      }
+      done();
     } catch {
-      /* ignore */
+      btn.textContent = "Failed";
+      setTimeout(() => (btn.textContent = "Copy"), 1600);
     }
   });
 
@@ -734,7 +783,10 @@ if (window.matchMedia("(display-mode: standalone)").matches) {
 
 bind();
 renderNotifState();
-load();
+load().catch((error) => {
+  state.lastError = String(error?.message || error);
+  renderAll();
+});
 startEvents();
 
 // Static mode has no push channel from the server; poll data.json for changes.

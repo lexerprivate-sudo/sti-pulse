@@ -1105,3 +1105,31 @@ summary:focus-visible {
     order: 2;
   }
 }
+@media (max-width: 640px) {
+  .layout { padding: 10px 10px 20px; }
+  .topbar { padding: 10px 12px; }
+  .topbar .tagline { display: none; }
+  .brand h1 { font-size: 17px; }
+  .status { padding: 6px 10px; font-size: 11px; }
+  .btn { min-height: 38px; }
+  .stats { gap: 0; border-radius: 14px; }
+  .stat { padding: 10px 10px; }
+  .stat strong { font-size: 22px; }
+  .stat-label { font-size: 8.5px; }
+  .tabs::-webkit-scrollbar, .week::-webkit-scrollbar { display: none; }
+  .tab { font-size: 12px; padding: 6px 10px; }
+  .card { padding: 9px 10px; gap: 8px; border-radius: 11px; }
+  .card h3 { font-size: 13px; }
+  .meta { font-size: 10.5px; gap: 6px; }
+  .badge { font-size: 10px; padding: 3px 8px; min-width: 58px; }
+  .done-btn { width: 30px; height: 30px; }
+  .connection { padding: 8px 10px; font-size: 10.5px; }
+  .conn-note { display: none; }
+  .panel { padding: 12px; border-radius: 12px; }
+  .topic { flex-direction: column; align-items: stretch; gap: 8px; }
+  .topic code { font-size: 12px; word-break: break-all; }
+  .panel-actions { flex-wrap: wrap; gap: 8px; }
+  .footer-note { font-size: 10px; }
+}
+.muted { opacity: 0.55; }
+.btn:disabled { opacity: 0.55; cursor: default; }
