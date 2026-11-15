@@ -1,4 +1,4 @@
-const CACHE = "sti-pulse-v19";
+const CACHE = "sti-pulse-v20";
 const SHELL = ["./", "style.css", "app.js", "manifest.webmanifest", "schedule.json", "icon.svg", "icon-192.png"];
 
 self.addEventListener("install", (event) => {

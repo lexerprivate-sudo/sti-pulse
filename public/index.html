@@ -10,163 +10,111 @@
     <link rel="manifest" href="manifest.webmanifest" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="icon-192.png" />
-    <link rel="stylesheet" href="style.css?v=19" />
+    <link rel="stylesheet" href="style.css?v=20" />
   </head>
   <body>
-    <div class="glow" aria-hidden="true"></div>
-
     <header class="topbar">
       <div class="brand">
-        <span class="mark" aria-hidden="true">
-          <svg viewBox="0 0 48 48" role="img">
-            <path d="M4 27h9l4-12 7 22 5-16 4 6h11" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-        </span>
-        <div>
+        <svg viewBox="0 0 48 48" class="mark" aria-hidden="true">
+          <path d="M4 27h9l4-12 7 22 5-16 4 6h11" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <div class="brand-text">
           <h1>STI Pulse</h1>
-          <p class="tagline">eLMS assignments, watched for you</p>
+          <p>eLMS assignments, watched for you</p>
         </div>
       </div>
       <div class="topbar-actions">
-        <div class="status" id="status-pill" title="Connection status">
-          <span class="dot" id="status-dot"></span>
-          <span id="status-text">Connecting…</span>
-        </div>
-        <button class="btn ghost" id="refresh-btn" type="button">
+        <span class="pill" id="status-pill" title="Connection status">
+          <span class="pill-dot"></span><span id="status-text">Connecting…</span>
+        </span>
+        <button class="icon-btn" id="refresh-btn" type="button" aria-label="Refresh now">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7M20 5v6h-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <span>Refresh</span>
         </button>
       </div>
     </header>
 
-    <main class="layout">
+    <main class="wrap">
       <section class="content">
         <div class="stats" id="stats">
-          <article class="stat danger">
-            <span class="stat-label">Overdue</span>
-            <strong id="stat-overdue">0</strong>
-          </article>
-          <article class="stat warn">
-            <span class="stat-label">Due in 7 days</span>
-            <strong id="stat-week">0</strong>
-          </article>
-          <article class="stat accent">
-            <span class="stat-label">New since last look</span>
-            <strong id="stat-new">0</strong>
-          </article>
-          <article class="stat">
-            <span class="stat-label">Tracked this term</span>
-            <strong id="stat-total">0</strong>
-          </article>
+          <div class="stat danger"><span class="lbl">Overdue</span><strong id="stat-overdue">–</strong></div>
+          <div class="stat warn"><span class="lbl">Due in 7 days</span><strong id="stat-week">–</strong></div>
+          <div class="stat"><span class="lbl">New</span><strong id="stat-new">–</strong></div>
+          <div class="stat"><span class="lbl">Tracked</span><strong id="stat-total">–</strong></div>
         </div>
 
-        <div class="toolbar">
-          <div class="tabs" role="tablist" aria-label="Filter assignments">
-            <button class="tab active" data-filter="upcoming" role="tab" aria-selected="true">Upcoming</button>
-            <button class="tab" data-filter="overdue" role="tab" aria-selected="false">Overdue</button>
-            <button class="tab" data-filter="week" role="tab" aria-selected="false">Next 7 days</button>
-            <button class="tab" data-filter="new" role="tab" aria-selected="false">New</button>
-            <button class="tab" data-filter="done" role="tab" aria-selected="false">Done</button>
-            <button class="tab" data-filter="all" role="tab" aria-selected="false">All</button>
-          </div>
-          <div class="toolbar-actions">
-            <button class="btn tiny ghost" id="ack-btn" type="button">Mark all seen</button>
-          </div>
-        </div>
+        <nav class="tabs" role="tablist" aria-label="Filter assignments">
+          <button class="tab active" data-filter="upcoming" role="tab" aria-selected="true">Upcoming</button>
+          <button class="tab" data-filter="overdue" role="tab" aria-selected="false">Overdue</button>
+          <button class="tab" data-filter="week" role="tab" aria-selected="false">Week</button>
+          <button class="tab" data-filter="new" role="tab" aria-selected="false">New</button>
+          <button class="tab" data-filter="done" role="tab" aria-selected="false">Done</button>
+          <button class="tab" data-filter="all" role="tab" aria-selected="false">All</button>
+          <button class="ghost-btn" id="ack-btn" type="button">Mark all seen</button>
+        </nav>
 
         <div class="list-head">
-          <span id="list-title">Upcoming deadlines</span>
-          <span class="muted" id="last-checked">Checking eLMS…</span>
+          <h2 id="list-title">Upcoming deadlines</h2>
+          <span class="muted" id="last-checked">Checking…</span>
         </div>
-        <p class="hint tiny list-note" id="list-note">Submission status comes from an eLMS snapshot. Tap the check to override anything it got wrong.</p>
-        <div class="list-scroll">
-          <div id="assignment-list" class="assignment-list" aria-live="polite"></div>
-          <div id="empty" class="empty" hidden>
-            <div class="empty-icon" aria-hidden="true">✓</div>
-            <h2>Nothing here</h2>
-            <p>No assignments match this filter. New posts will appear automatically.</p>
-          </div>
+        <p class="note" id="list-note">Submission status from an eLMS snapshot.</p>
+
+        <div id="assignment-list" class="assignment-list" aria-live="polite"></div>
+        <div id="empty" class="empty" hidden>
+          <div class="empty-icon" aria-hidden="true">✓</div>
+          <p>Nothing here</p>
+          <span>New posts will appear automatically.</span>
         </div>
 
-        <article class="panel connection">
-          <dl class="facts">
-            <div><dt>Source</dt><dd id="feed-host">—</dd></div>
-            <div><dt>Last check</dt><dd id="feed-last">—</dd></div>
-            <div><dt>Next check</dt><dd id="feed-next">—</dd></div>
-            <div><dt>Term ends</dt><dd id="term-end">—</dd></div>
-          </dl>
-          <p class="hint tiny conn-note">Live eLMS feed · no password stored</p>
+        <footer class="conn">
+          <span>Source <b id="feed-host">eLMS</b></span>
+          <span>Last check <b id="feed-last">–</b></span>
+          <span>Next <b id="feed-next">–</b></span>
+          <span>Term ends <b id="term-end">–</b></span>
           <p class="error" id="feed-error" hidden></p>
-        </article>
+        </footer>
       </section>
 
       <aside class="sidebar">
-        <article class="panel">
-          <h2>Class schedule</h2>
-          <p class="next-class" id="next-class">—</p>
+        <section class="panel">
+          <h3>Class schedule</h3>
+          <p class="next" id="next-class">—</p>
           <ol class="week" id="week"></ol>
-        </article>
+        </section>
 
-        <article class="panel highlight">
-          <h2>Get alerts on your phone</h2>
-          <p class="hint">Install the free <strong>ntfy</strong> app, then subscribe to this private topic.</p>
+        <section class="panel">
+          <h3>Get alerts</h3>
+          <p class="hint">Subscribe to this private topic in the <b>ntfy</b> app.</p>
           <div class="topic">
             <code id="ntfy-topic">—</code>
-            <button class="btn tiny" id="copy-topic" type="button">Copy</button>
+            <button class="mini" id="copy-topic" type="button">Copy</button>
           </div>
-          <form class="topic-form" id="topic-form" hidden>
+          <form id="topic-form" class="topic-form" hidden>
             <input id="topic-set" type="text" placeholder="Paste your ntfy topic" autocomplete="off" spellcheck="false" />
-            <button class="btn tiny" type="submit">Save</button>
+            <button class="mini primary" type="submit">Save</button>
           </form>
-          <div class="panel-actions">
-            <a class="btn small" id="ntfy-link" href="https://ntfy.sh" target="_blank" rel="noopener">Open ntfy</a>
-            <button class="btn small ghost" id="test-notify" type="button">Send test</button>
+          <div class="btn-row">
+            <a class="mini" id="ntfy-link" href="https://ntfy.sh" target="_blank" rel="noopener">Open ntfy</a>
+            <button class="mini" id="test-notify" type="button">Send test</button>
           </div>
-          <p class="hint tiny">Keep the topic private. Class reminders arrive 3 hours before each session.</p>
-        </article>
+          <p class="hint small">Keep it private. Reminders arrive 3 h before class.</p>
+        </section>
 
-        <article class="panel">
-          <h2>This device</h2>
-          <div class="panel-actions column">
-            <button class="btn small" id="enable-notifs" type="button">Enable browser alerts</button>
-            <button class="btn small ghost" id="install-btn" type="button" hidden>Install STI Pulse</button>
+        <section class="panel">
+          <h3>This device</h3>
+          <div class="btn-row">
+            <button class="mini primary" id="enable-notifs" type="button">Enable alerts</button>
+            <button class="mini" id="install-btn" type="button" hidden>Install app</button>
           </div>
-          <p class="hint" id="install-hint">On a phone, use the browser menu → “Add to Home screen”.</p>
-        </article>
-
-        <details class="panel settings">
-          <summary>Settings</summary>
-          <form id="settings-form">
-            <label>
-              <span>eLMS iCal feed URL</span>
-              <input id="feed-url" type="url" placeholder="Leave blank to keep the saved feed" autocomplete="off" spellcheck="false" />
-            </label>
-            <label>
-              <span>ntfy topic</span>
-              <input id="ntfy-input" type="text" autocomplete="off" spellcheck="false" />
-            </label>
-            <label>
-              <span>Check every (minutes)</span>
-              <input id="poll-minutes" type="number" min="2" max="120" step="1" />
-            </label>
-            <label class="check">
-              <input id="digest" type="checkbox" />
-              <span>Daily 8 AM deadline digest</span>
-            </label>
-            <button class="btn small" type="submit">Save settings</button>
-            <p class="hint" id="settings-msg" role="status"></p>
-          </form>
-        </details>
-
-        <p class="footer-note">Built for Lexer Josh Coquilla · STI College Global City</p>
+          <p class="hint small" id="install-hint">On phone: browser menu → “Add to Home screen”.</p>
+        </section>
       </aside>
     </main>
 
-    <div id="update-toast" class="update-toast" hidden>
-    <span>A new version of STI Pulse is ready.</span>
-    <button id="update-reload" type="button" class="btn tiny">Reload</button>
-  </div>
+    <div id="update-toast" class="toast" hidden>
+      <span>A new version is ready.</span>
+      <button class="mini primary" id="update-reload" type="button">Reload</button>
+    </div>
 
-  <script src="app.js?v=19" type="module"></script>
+    <script src="app.js?v=20" type="module"></script>
   </body>
 </html>
