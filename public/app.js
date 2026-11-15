@@ -365,15 +365,20 @@ function renderSchedule() {
 
 function renderStatus() {
   const stale = state.lastError || !state.lastPoll;
-  els.pill.classList.toggle("ok", !stale);
+  const pollAgeMin = state.lastPoll ? (Date.now() - new Date(state.lastPoll).getTime()) / 60_000 : Infinity;
+  const isStale = pollAgeMin > 60;
+  els.pill.classList.toggle("ok", !stale && !isStale);
   els.pill.classList.toggle("bad", Boolean(state.lastError));
+  els.pill.classList.toggle("warn", !state.lastError && isStale);
   els.statusText.textContent = state.lastError
     ? "Connection problem"
-    : state.lastPoll
-      ? "Connected"
-      : "Connecting…";
+    : isStale
+      ? "Stale data"
+      : state.lastPoll
+        ? "Connected"
+        : "Connecting…";
   els.feedLast.textContent = state.lastPoll ? fmtRelative(state.lastPoll) : "—";
-  els.feedNext.textContent = state.staticMode ? "Every 15 min" : "On demand";
+  els.feedNext.textContent = isStale ? "Delayed — GitHub skipped runs" : "Every 15 min (best effort)";
   els.feedError.hidden = !state.lastError;
   els.feedError.textContent = state.lastError
     ? "eLMS is not responding right now. Showing your last saved copy."
