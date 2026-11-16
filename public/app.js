@@ -14,7 +14,9 @@ function logWarn(context, error) {
 }
 
 function isPlainObject(v) { return typeof v === "object" && v !== null && !Array.isArray(v); }
+function isValidDate(t) { return Number.isFinite(t); }
 
+/* ---------- load / save helpers ---------- */
 function loadDone() {
   try {
     const parsed = JSON.parse(storage.get(DONE_KEY) || "{}");
@@ -36,6 +38,7 @@ function loadCachedJson() {
   } catch { return null; }
 }
 
+/* ---------- Element handles ---------- */
 const els = {
   pill: $("status-pill"),
   statusText: $("status-text"),
@@ -43,12 +46,10 @@ const els = {
   empty: $("empty"),
   emptyTitle: $("empty-title"),
   emptySub: $("empty-sub"),
-  emptyIcon: $("empty-icon"),
   errorPanel: $("error-panel"),
   errorPanelText: $("error-panel-text"),
   errorRetry: $("error-retry"),
   offlineBanner: $("offline-banner"),
-  offlineAge: $("offline-age"),
   listTitle: $("list-title"),
   listNote: $("list-note"),
   lastChecked: $("last-checked"),
@@ -62,17 +63,23 @@ const els = {
   week: $("week"),
   ntfyTopic: $("ntfy-topic"),
   ntfyLink: $("ntfy-link"),
-  ntfyInput: $("topic-set"),
   topicForm: $("topic-form"),
+  topicInput: $("topic-input"),
+  topicSetWrap: $("topic-set"),
+  topicShowWrap: $("topic-show"),
+  changeTopicBtn: $("change-topic-btn"),
+  copyTopicBtn: $("copy-topic"),
+  testNotifyBtn: $("test-notify"),
   enableNotifs: $("enable-notifs"),
   installBtn: $("install-btn"),
   installHint: $("install-hint"),
   updateToast: $("update-toast"),
   updateReload: $("update-reload"),
   updateDismiss: $("update-dismiss"),
+  ackBtn: $("ack-btn"),
+  refreshBtn: $("refresh-btn"),
 };
 
-const IS_LOCAL = ["localhost", "127.0.0.1"].includes(location.hostname);
 const DAY_NAMES = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 const FILTER_TITLES = {
   upcoming: "Upcoming deadlines",
@@ -99,6 +106,7 @@ const state = {
   lastPoll: null,
   lastError: null,
   offlineMode: false,
+  scheduleError: false,
   lastAck: Number.isFinite(Number(storage.get("sti-last-ack"))) ? Number(storage.get("sti-last-ack")) : 0,
   ntfyTopic: storage.get("sti-ntfy-topic") || "",
   done: loadDone(),
@@ -121,18 +129,19 @@ function toggleDone(item) {
 }
 function doneDate(item) {
   const m = state.done[item.uid];
-  if (typeof m === "string") return m;
+  if (typeof m === "string" && Number.isFinite(new Date(m).getTime())) return m;
   if (submittedInElms(item)) return state.submittedAt;
   return null;
 }
 
-function daysUntil(due) { return Math.floor((new Date(due).getTime() - Date.now()) / 86_400_000); }
+function daysUntil(due) { return Math.trunc((new Date(due).getTime() - Date.now()) / 86_400_000); }
 function isOverdue(item) { return new Date(item.due).getTime() < Date.now(); }
 function isNew(item) { return new Date(item.firstSeen).getTime() > (state.lastAck || 0); }
 function needsAttention(item) { return isOverdue(item) && !isDone(item); }
 
 function fmtDue(item) {
   const d = new Date(item.due);
+  if (!Number.isFinite(d.getTime())) return "unknown date";
   const date = d.toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" });
   if (item.allDay) return date;
   return `${date}, ${d.toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" })}`;
@@ -154,9 +163,11 @@ function badgeFor(item) {
   }
   if (isOverdue(item)) {
     const days = Math.abs(daysUntil(item.due));
+    if (!Number.isFinite(days)) return { cls: "", text: "?" };
     return days > 30 ? { cls: "past", text: `${days}d ago` } : { cls: "overdue", text: days <= 1 ? "Overdue" : `${days}d late` };
   }
   const days = daysUntil(item.due);
+  if (!Number.isFinite(days)) return { cls: "", text: "?" };
   if (days <= 0) return { cls: "today", text: "Today" };
   if (days === 1) return { cls: "soon", text: "Tomorrow" };
   if (days <= 7) return { cls: "soon", text: `${days}d left` };
@@ -191,98 +202,168 @@ function visibleItems() {
   return items;
 }
 
-/* ---------- Render ---------- */
+/* ---------- live region updates ---------- */
+function setText(node, value) { if (node && node.textContent !== value) node.textContent = value; }
+function setHidden(node, hidden) { if (node.hidden !== hidden) node.hidden = hidden; }
+
+/* ---------- render ---------- */
+const statEls = {
+  overdue: $("stat-overdue"),
+  week: $("stat-week"),
+  newCount: $("stat-new"),
+  total: $("stat-total"),
+};
+const statBoxes = {
+  overdue: statEls.overdue.closest(".stat"),
+  week: statEls.week.closest(".stat"),
+  newCount: statEls.newCount.closest(".stat"),
+  total: statEls.total.closest(".stat"),
+};
+
 function renderStats() {
   const now = Date.now();
   const week = now + 7 * 86_400_000;
+  const noData = state.lastError && !state.assignments.length;
   const overdue = state.assignments.filter(needsAttention).length;
   const weekCount = state.assignments.filter((i) => { const t = new Date(i.due).getTime(); return t >= now && t <= week && !isDone(i); }).length;
   const newCount = state.assignments.filter((i) => isNew(i) && !isDone(i)).length;
-  $("stat-overdue").textContent = overdue;
-  $("stat-week").textContent = weekCount;
-  $("stat-new").textContent = newCount;
-  $("stat-total").textContent = state.assignments.length;
-  $("stat-overdue").closest(".stat").classList.toggle("danger", overdue > 0);
-  $("stat-week").closest(".stat").classList.toggle("warn", weekCount > 0);
+  statEls.overdue.textContent = noData ? "–" : overdue;
+  statEls.week.textContent = noData ? "–" : weekCount;
+  statEls.newCount.textContent = noData ? "–" : newCount;
+  statEls.total.textContent = noData ? "–" : state.assignments.length;
+  statBoxes.overdue.classList.toggle("danger", overdue > 0);
+  statBoxes.week.classList.toggle("warn", weekCount > 0);
 }
+
+const rowCache = new Map();
 
 function renderList() {
   const items = visibleItems();
-  els.listTitle.textContent = FILTER_TITLES[state.filter] || "Assignments";
-  els.listStatus.textContent = items.length ? `${items.length} shown` : "Empty";
-  els.list.innerHTML = "";
+  setText(els.listTitle, FILTER_TITLES[state.filter] || "Assignments");
+  setText(els.listStatus, items.length ? `${items.length} shown` : "Empty");
 
   const failedAndNoData = state.lastError && !state.assignments.length;
-  els.errorPanel.hidden = !failedAndNoData;
-  els.empty.hidden = items.length > 0 || failedAndNoData;
+  setHidden(els.errorPanel, !failedAndNoData);
+  setHidden(els.empty, items.length > 0 || failedAndNoData);
 
   if (failedAndNoData) {
-    els.errorPanelText.textContent = state.lastError.includes("web page")
+    setText(els.errorPanelText, state.lastError.includes("web page")
       ? "The feed responded with a page instead of data — the site may be misconfigured. Try Refresh in a bit."
-      : "Could not reach the eLMS feed. Check your connection, then retry.";
+      : "Could not reach the eLMS feed. Check your connection, then retry.");
+    rowCache.clear();
+    els.list.innerHTML = "";
     return;
   }
   if (!items.length) {
     const copy = EMPTY_STATES[state.filter] || EMPTY_STATES.upcoming;
-    els.emptyTitle.textContent = copy.title;
-    els.emptySub.textContent = copy.sub;
+    setText(els.emptyTitle, copy.title);
+    setText(els.emptySub, copy.sub);
+    rowCache.clear();
+    els.list.innerHTML = "";
     return;
   }
 
+  const liveIds = new Set();
   const frag = document.createDocumentFragment();
   for (const item of items) {
+    if (!item || typeof item.uid !== "string") continue;
+    liveIds.add(item.uid);
     const done = isDone(item);
-    const badge = badgeFor(item);
-    const row = document.createElement("article");
-    row.className = `row ${isOverdue(item) && !done ? "overdue" : ""} ${done ? "is-done" : ""}`.trim();
+    let row = rowCache.get(item.uid);
+    if (row) {
+      // Update classes and contents in place
+      const badge = badgeFor(item);
+      const badgeEl = row.querySelector(".badge");
+      badgeEl.className = `badge ${badge.cls}`.trim();
+      badgeEl.textContent = badge.text;
+      row.className = `row ${isOverdue(item) && !done ? "overdue" : ""} ${done ? "is-done" : ""}`.trim();
+      const metaCourse = row.querySelector(".course");
+      const metaDue = row.querySelector(".row-due");
+      const metaStatus = row.querySelector(".row-status");
+      if (metaCourse) metaCourse.textContent = item.course || "eLMS";
+      if (metaDue) metaDue.textContent = new Date(item.due).toLocaleDateString("en-PH", { month: "short", day: "numeric" });
+      const newIsDone = done;
+      if (newIsDone) {
+        const when = doneDate(item);
+        if (!metaStatus) {
+          const s = document.createElement("span");
+          s.className = "row-status";
+          row.querySelector(".row-meta").append(s);
+        }
+        row.querySelector(".row-status").textContent = submittedInElms(item) && !state.done[item.uid]
+          ? "Submitted in eLMS"
+          : when ? `Marked done ${new Date(when).toLocaleDateString("en-PH", { month: "short", day: "numeric" })}` : "Marked done";
+      } else if (metaStatus) {
+        metaStatus.remove();
+      }
+      const check = row.querySelector(".row-check");
+      check.classList.toggle("on", done);
+      check.setAttribute("aria-pressed", done ? "true" : "false");
+      check.setAttribute("aria-label", `Mark "${item.title}" as ${done ? "not done" : "done"}`);
+      frag.append(row);
+    } else {
+      row = document.createElement("article");
+      const badge = badgeFor(item);
+      row.className = `row ${isOverdue(item) && !done ? "overdue" : ""} ${done ? "is-done" : ""}`.trim();
 
-    const badgeEl = document.createElement("span");
-    badgeEl.className = `badge ${badge.cls}`.trim();
-    badgeEl.textContent = badge.text;
+      const badgeEl = document.createElement("span");
+      badgeEl.className = `badge ${badge.cls}`.trim();
+      badgeEl.textContent = badge.text;
 
-    const body = document.createElement("div");
-    body.className = "row-body";
-    const title = document.createElement("h3");
-    title.className = "row-title";
-    title.textContent = item.title;
-    const meta = document.createElement("div");
-    meta.className = "row-meta";
-    const course = document.createElement("span");
-    course.className = "course";
-    course.textContent = item.course || "eLMS";
-    const due = document.createElement("span");
-    due.textContent = `Due ${fmtDue(item)}`;
-    meta.append(course, due);
-    if (done) {
-      const when = doneDate(item);
-      const status = document.createElement("span");
-      status.textContent = submittedInElms(item) && !state.done[item.uid]
-        ? "Submitted in eLMS"
-        : when ? `Marked done ${new Date(when).toLocaleDateString("en-PH", { month: "short", day: "numeric" })}` : "Marked done";
-      meta.append(status);
+      const body = document.createElement("div");
+      body.className = "row-body";
+      const title = document.createElement("h3");
+      title.className = "row-title";
+      title.textContent = item.title;
+      const meta = document.createElement("div");
+      meta.className = "row-meta";
+      const course = document.createElement("span");
+      course.className = "course";
+      course.textContent = item.course || "eLMS";
+      const due = document.createElement("span");
+      due.textContent = `Due ${fmtDue(item)}`;
+      meta.append(course, due);
+      if (done) {
+        const when = doneDate(item);
+        const status = document.createElement("span");
+        status.className = "row-status";
+        status.textContent = submittedInElms(item) && !state.done[item.uid]
+          ? "Submitted in eLMS"
+          : when ? `Marked done ${new Date(when).toLocaleDateString("en-PH", { month: "short", day: "numeric" })}` : "Marked done";
+        meta.append(status);
+      }
+      body.append(title, meta);
+
+      const rowDue = document.createElement("span");
+      rowDue.className = "row-due";
+      rowDue.textContent = new Date(item.due).toLocaleDateString("en-PH", { month: "short", day: "numeric" });
+
+      const check = document.createElement("button");
+      check.type = "button";
+      check.className = `row-check${done ? " on" : ""}`;
+      check.title = done ? "Mark as not done" : "Mark as done";
+      check.setAttribute("aria-pressed", done ? "true" : "false");
+      check.setAttribute("aria-label", `Mark "${item.title}" as ${done ? "not done" : "done"}`);
+      check.dataset.uid = item.uid;
+      check.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4" fill="none" stroke="currentColor" stroke-width="2"/><path class="check-path" d="M8.5 12.5l2.5 2.5L15.5 9.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      check.addEventListener("click", () => {
+        toggleDone(item);
+        renderList();
+        renderStats();
+        const btn = els.list.querySelector(`[data-uid="${CSS.escape(item.uid)}"]`);
+        if (btn) btn.focus({ preventScroll: true });
+      });
+
+      row.append(badgeEl, body, rowDue, check);
+      rowCache.set(item.uid, row);
+      frag.append(row);
     }
-    body.append(title, meta);
-
-    const check = document.createElement("button");
-    check.type = "button";
-    check.className = `row-check${done ? " on" : ""}`;
-    check.title = done ? "Mark as not done" : "Mark as done";
-    check.setAttribute("aria-pressed", done ? "true" : "false");
-    check.setAttribute("aria-label", `Mark "${item.title}" as ${done ? "not done" : "done"}`);
-    check.dataset.uid = item.uid;
-    check.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4" fill="none" stroke="currentColor" stroke-width="2"/><path class="check-path" d="M8.5 12.5l2.5 2.5L15.5 9.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-    check.addEventListener("click", () => {
-      toggleDone(item);
-      renderList();
-      renderStats();
-      const btn = els.list.querySelector(`[data-uid="${CSS.escape(item.uid)}"]`);
-      (btn || els.list).focus({ preventScroll: true });
-    });
-
-    row.append(badgeEl, body, check);
-    frag.append(row);
   }
-  els.list.append(frag);
+  // Drop cache entries for items no longer visible
+  for (const uid of [...rowCache.keys()]) {
+    if (!liveIds.has(uid)) rowCache.delete(uid);
+  }
+  els.list.replaceChildren(frag);
 }
 
 function minutes(hhmm) { const [h, m] = String(hhmm).split(":").map(Number); return (Number.isFinite(h) ? h : 0) * 60 + (Number.isFinite(m) ? m : 0); }
@@ -312,102 +393,115 @@ function nextClass(now = new Date()) {
 function renderSchedule() {
   const now = new Date();
   const today = now.getDay();
-  const next = nextClass(now);
-  if (next) {
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const startOfNext = new Date(next.start.getFullYear(), next.start.getMonth(), next.start.getDate()).getTime();
-    const days = Math.round((startOfNext - startOfToday) / 86_400_000);
-    const when = days === 0 ? "Today" : days === 1 ? "Tomorrow" : DAY_NAMES[next.start.getDay()];
-    const strong = document.createElement("strong");
-    strong.textContent = next.course;
-    els.nextClass.replaceChildren("Next: ", strong, ` · ${when} ${next.start.toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" })}${next.room ? ` · ${next.room}` : ""}`);
+
+  if (state.scheduleError) {
+    setText(els.nextClass, "Class schedule unavailable — check back later.");
   } else {
-    els.nextClass.textContent = "No classes in the next week.";
+    const next = nextClass(now);
+    if (next) {
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+      const startOfNext = new Date(next.start.getFullYear(), next.start.getMonth(), next.start.getDate()).getTime();
+      const days = Math.round((startOfNext - startOfToday) / 86_400_000);
+      const when = days === 0 ? "Today" : days === 1 ? "Tomorrow" : DAY_NAMES[next.start.getDay()];
+      const strong = document.createElement("strong");
+      strong.textContent = next.course;
+      els.nextClass.replaceChildren("Next: ", strong, ` · ${when} ${next.start.toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" })}${next.room ? ` · ${next.room}` : ""}`);
+    } else {
+      setText(els.nextClass, "No classes in the next week.");
+    }
   }
 
   const frag = document.createDocumentFragment();
-  for (const day of [1, 2, 3, 4, 5, 6, 0]) {
+  if (state.scheduleError) {
     const li = document.createElement("li");
-    if (day === today) li.className = "today";
-    const head = document.createElement("div");
-    head.className = "day";
-    head.textContent = DAY_NAMES[day];
-    head.title = "Day";
-    const col = document.createElement("div");
-    const classes = SCHEDULE[day] || [];
-    if (!classes.length) {
-      const none = document.createElement("div");
-      none.className = "none";
-      none.textContent = "Free";
-      col.append(none);
-    } else {
-      for (const item of classes) {
-        const row = document.createElement("div");
-        row.className = "cls";
-        const time = document.createElement("span");
-        time.className = "time";
-        time.textContent = `${fmtClock(item.from)}–${fmtClock(item.to)}`;
-        const course = document.createElement("span");
-        course.className = "course-name";
-        course.textContent = item.course;
-        const room = document.createElement("span");
-        room.className = "room";
-        room.textContent = item.room || "";
-        row.append(time, course, room);
-        col.append(row);
-      }
-    }
-    li.append(head, col);
+    const none = document.createElement("div");
+    none.className = "none";
+    none.textContent = "Couldn't load schedule";
+    li.append(none);
     frag.append(li);
+  } else {
+    for (const day of [1, 2, 3, 4, 5, 6, 0]) {
+      const li = document.createElement("li");
+      if (day === today) li.className = "today";
+      const head = document.createElement("div");
+      head.className = "day";
+      head.textContent = DAY_NAMES[day];
+      const col = document.createElement("div");
+      const classes = SCHEDULE[day] || [];
+      if (!classes.length) {
+        const none = document.createElement("div");
+        none.className = "none";
+        none.textContent = "Free";
+        col.append(none);
+      } else {
+        for (const item of [...(SCHEDULE[day] || [])].sort((a, b) => minutes(a.from) - minutes(b.from))) {
+          const row = document.createElement("div");
+          row.className = "cls";
+          const time = document.createElement("span");
+          time.className = "time";
+          time.textContent = `${fmtClock(item.from)}–${fmtClock(item.to)}`;
+          const course = document.createElement("span");
+          course.className = "course-name";
+          course.textContent = item.course;
+          const room = document.createElement("span");
+          room.className = "room";
+          room.textContent = item.room || "";
+          row.append(time, course, room);
+          col.append(row);
+        }
+      }
+      li.append(head, col);
+      frag.append(li);
+    }
   }
   els.week.replaceChildren(frag);
 }
 
 function renderStatus() {
-  const stale = state.lastError || !state.lastPoll;
+  const stale = Boolean(state.lastError) || !state.lastPoll;
   const pollAgeMin = state.lastPoll ? (Date.now() - new Date(state.lastPoll).getTime()) / 60_000 : Infinity;
   const isStale = pollAgeMin > 60;
   els.pill.classList.toggle("ok", !stale && !isStale);
   els.pill.classList.toggle("bad", Boolean(state.lastError));
   els.pill.classList.toggle("warn", !state.lastError && isStale);
-  els.statusText.textContent = state.lastError
-    ? "Connection problem"
-    : isStale
-      ? "Stale data"
-      : state.lastPoll
-        ? "Connected"
-        : "Connecting…";
-  els.feedLast.textContent = state.lastPoll ? fmtRelative(state.lastPoll) : "—";
-  els.feedNext.textContent = isStale ? "Delayed — GitHub skipped runs" : "Every 15 min (best effort)";
-  els.feedError.hidden = !state.lastError;
-  els.feedError.textContent = state.lastError
-    ? "eLMS is not responding right now. Showing your last saved copy."
-    : "";
+  const statusDot = els.pill.querySelector(".pill-dot");
+  if (statusDot) {
+    statusDot.classList.toggle("ok", !stale && !isStale);
+    statusDot.classList.toggle("warn", !state.lastError && isStale);
+    statusDot.classList.toggle("bad", Boolean(state.lastError));
+  }
+  setText(els.statusText, state.lastError
+    ? "eLMS problem"
+    : isStale ? "Stale data"
+    : state.lastPoll ? "Connected" : "Connecting…");
+  setText(els.feedLast, state.lastPoll ? fmtRelative(state.lastPoll) : "—");
+  setText(els.feedNext, isStale ? "Delayed — GitHub skipped runs" : "Every 15 min (best effort)");
+  setHidden(els.feedError, !state.lastError);
+  if (state.lastError) els.feedError.textContent = "eLMS is not responding right now — showing your last copy.";
   els.termEnd.textContent = state.termEnd && Number.isFinite(new Date(state.termEnd).getTime())
     ? new Date(state.termEnd).toLocaleDateString("en-PH", { month: "short", day: "numeric", year: "numeric" })
     : "—";
-  els.lastChecked.textContent = state.lastPoll ? `Checked ${fmtRelative(state.lastPoll)}` : "Checking…";
-  els.listNote.textContent = state.submittedAt
+  setText(els.lastChecked, state.lastPoll ? `Checked ${fmtRelative(state.lastPoll)}` : "Checking…");
+  setText(els.listNote, state.submittedAt
     ? `Done status from the latest eLMS sync (${new Date(state.submittedAt).toLocaleDateString("en-PH", { month: "short", day: "numeric" })}). Tap a checkmark to override.`
-    : "Submission status unavailable — tap the checkmark to mark done.";
-  els.offlineBanner.hidden = !state.offlineMode;
-  if (state.offlineMode && state.lastPoll) {
-    els.offlineAge.textContent = fmtRelative(state.lastPoll);
-  }
+    : "Submission status unavailable — tap the checkmark to mark done.");
+  setHidden(els.offlineBanner, !state.offlineMode);
 }
 
 function renderTopic() {
   const topic = state.ntfyTopic;
-  els.ntfyTopic.textContent = topic || "Not set on this device";
   const isAndroid = /android/i.test(navigator.userAgent);
+  setText(els.ntfyTopic, topic || "Not set on this device");
   els.ntfyLink.href = topic
     ? (isAndroid ? `ntfy://ntfy.sh/${encodeURIComponent(topic)}` : `https://ntfy.sh/${encodeURIComponent(topic)}`)
     : "https://ntfy.sh";
-  if (document.activeElement !== els.ntfyInput) {
-    els.ntfyInput.value = topic;
+  if (document.activeElement !== els.topicInput) {
+    els.topicInput.value = topic;
   }
-  const copyBtn = $("copy-topic");
-  if (copyBtn) copyBtn.disabled = !topic;
+  if (els.copyTopicBtn) els.copyTopicBtn.disabled = !topic;
+  if (els.testNotifyBtn) els.testNotifyBtn.disabled = !topic;
+  setHidden(els.topicSetWrap, Boolean(topic));
+  setHidden(els.topicShowWrap, !topic);
 }
 
 function renderAll() {
@@ -423,15 +517,21 @@ async function loadSchedule() {
   try {
     const res = await fetch("schedule.json", { cache: "no-cache" });
     const text = await res.text();
+    if (text.trim().startsWith("<")) throw new Error("got a web page instead of data");
     const data = JSON.parse(text);
     if (!isPlainObject(data.days)) throw new Error("bad schedule shape");
     SCHEDULE = data.days;
     storage.set(SCHEDULE_CACHE, text);
+    state.scheduleError = false;
   } catch (error) {
     logWarn("schedule load", error);
+    state.scheduleError = true;
     try {
       const cached = JSON.parse(storage.get(SCHEDULE_CACHE) || "null");
-      if (isPlainObject(cached?.days)) SCHEDULE = cached.days;
+      if (isPlainObject(cached?.days)) {
+        SCHEDULE = cached.days;
+        state.scheduleError = false;
+      }
     } catch { /* keep empty */ }
   }
 }
@@ -440,6 +540,7 @@ async function loadSubmitted() {
   try {
     const res = await fetch("submitted.json", { cache: "no-cache" });
     const text = await res.text();
+    if (text.trim().startsWith("<")) throw new Error("got a web page instead of data");
     const data = JSON.parse(text);
     if (!isPlainObject(data.items)) throw new Error("bad snapshot shape");
     state.submitted = data.items;
@@ -465,12 +566,13 @@ async function loadData() {
   try {
     const data = await fetchDataJson();
     storage.set(DATA_CACHE, JSON.stringify(data));
-    state.assignments = data.assignments;
+    state.assignments = data.assignments.filter((a) => a && typeof a.uid === "string");
     state.lastPoll = data.lastPoll || null;
     state.lastError = data.lastError || null;
     state.termEnd = data.termEnd || null;
     state.offlineMode = false;
     state.pollFailures = 0;
+    els.feedHost.textContent = "eLMS";
   } catch (error) {
     logWarn("data load", error);
     state.pollFailures += 1;
@@ -487,9 +589,8 @@ async function loadData() {
       state.lastError = String(error?.message || error);
       state.offlineMode = true;
     }
-    return;
+    els.feedHost.textContent = "eLMS";
   }
-  els.feedHost.textContent = "eLMS";
 }
 
 async function load() {
@@ -504,14 +605,18 @@ async function load() {
       history.replaceState(null, "", clean);
     }
   } catch { /* ignore */ }
+  els.list.setAttribute("aria-busy", "true");
   await Promise.all([loadSchedule(), loadSubmitted(), loadData()]);
   els.feedHost.textContent = "eLMS";
+  els.list.setAttribute("aria-busy", "false");
   pruneDoneKeys();
   renderAll();
 }
 
 function pruneDoneKeys() {
+  if (state.lastError) return; // don't wipe state during a failed poll
   const feedUids = new Set(state.assignments.map((a) => a.uid));
+  if (!feedUids.size) return; // don't wipe when we have no healthy data
   let changed = false;
   for (const uid of Object.keys(state.done)) {
     if (!feedUids.has(uid)) {
@@ -528,20 +633,20 @@ document.querySelectorAll(".tab").forEach((tab) => {
     document.querySelectorAll(".tab").forEach((t) => {
       const on = t === tab;
       t.classList.toggle("active", on);
-      t.setAttribute("aria-pressed", on ? "true" : "false");
+      t.setAttribute("aria-checked", on ? "true" : "false");
     });
     state.filter = tab.dataset.filter;
     renderList();
   });
 });
 
-const refreshBtn = $("refresh-btn");
-refreshBtn.addEventListener("click", async () => {
-  refreshBtn.disabled = true;
+els.refreshBtn.addEventListener("click", async () => {
+  els.refreshBtn.disabled = true;
+  els.refreshBtn.setAttribute("aria-busy", "true");
   try {
     const data = await fetchDataJson();
     storage.set(DATA_CACHE, JSON.stringify(data));
-    state.assignments = data.assignments;
+    state.assignments = data.assignments.filter((a) => a && typeof a.uid === "string");
     state.lastPoll = data.lastPoll || null;
     state.lastError = data.lastError || null;
     state.termEnd = data.termEnd || null;
@@ -553,21 +658,39 @@ refreshBtn.addEventListener("click", async () => {
     state.pollFailures += 1;
     state.lastError = String(error?.message || error);
     renderStatus();
+    renderList();
   } finally {
-    refreshBtn.disabled = false;
+    els.refreshBtn.disabled = false;
+    els.refreshBtn.setAttribute("aria-busy", "false");
   }
 });
 
-$("error-retry").addEventListener("click", () => { load(); });
+els.errorRetry.addEventListener("click", () => { load(); });
 
-$("ack-btn").addEventListener("click", () => {
+/* Undo "mark all seen" path */
+let ackUndoTimer = null;
+let previousLastAck = 0;
+els.ackBtn.addEventListener("click", () => {
+  previousLastAck = state.lastAck;
   state.lastAck = Date.now();
   storage.set("sti-last-ack", String(state.lastAck));
   renderAll();
+  els.ackBtn.textContent = "Undo";
+  clearTimeout(ackUndoTimer);
+  ackUndoTimer = setTimeout(() => {
+    els.ackBtn.textContent = "Mark all seen";
+  }, 5000);
+});
+els.ackBtn.addEventListener("click", () => {
+  if (els.ackBtn.textContent !== "Undo") return;
+  state.lastAck = previousLastAck;
+  storage.set("sti-last-ack", String(state.lastAck));
+  renderAll();
+  els.ackBtn.textContent = "Mark all seen";
 });
 
-$("copy-topic").addEventListener("click", async () => {
-  const btn = $("copy-topic");
+els.copyTopicBtn.addEventListener("click", async () => {
+  const btn = els.copyTopicBtn;
   if (!state.ntfyTopic) {
     btn.textContent = "Set topic first";
     setTimeout(() => (btn.textContent = "Copy"), 1600);
@@ -575,42 +698,53 @@ $("copy-topic").addEventListener("click", async () => {
   }
   const done = () => {
     btn.textContent = "Copied ✓";
-    setTimeout(() => (btn.textContent = "Copy"), 1600);
+    btn.classList.add("flash-ok");
+    setTimeout(() => { btn.textContent = "Copy"; btn.classList.remove("flash-ok"); }, 1600);
+  };
+  const copyWith = async () => {
+    if (navigator.clipboard?.writeText) {
+      try { await navigator.clipboard.writeText(state.ntfyTopic); return true; } catch { /* fall through */ }
+    }
+    const ta = document.createElement("textarea");
+    ta.value = state.ntfyTopic;
+    ta.style.cssText = "position:fixed;top:0;left:0;opacity:0;";
+    document.body.append(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch { ok = false; }
+    ta.remove();
+    return ok;
   };
   try {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(state.ntfyTopic);
-      done();
-    } else {
-      const ta = document.createElement("textarea");
-      ta.value = state.ntfyTopic;
-      ta.style.cssText = "position:fixed;opacity:0";
-      document.body.append(ta);
-      ta.select();
-      let ok = false;
-      try { ok = document.execCommand("copy"); } catch { ok = false; }
-      ta.remove();
-      if (ok) done(); else throw new Error("copy failed");
-    }
+    const ok = await copyWith();
+    if (ok) done(); else throw new Error("copy failed");
   } catch (error) {
     logWarn("clipboard copy", error);
     btn.textContent = "Failed";
-    setTimeout(() => (btn.textContent = "Copy"), 1600);
+    btn.classList.add("flash-err");
+    setTimeout(() => { btn.textContent = "Copy"; btn.classList.remove("flash-err"); }, 1600);
   }
 });
 
 els.topicForm.addEventListener("submit", (event) => {
   event.preventDefault();
-  const topic = els.ntfyInput.value.trim();
+  const topic = els.topicInput.value.trim();
   if (!topic) return;
   state.ntfyTopic = topic;
   storage.set("sti-ntfy-topic", topic);
   renderTopic();
-  els.ntfyInput.blur();
+  els.topicInput.blur();
 });
 
-$("test-notify").addEventListener("click", async () => {
-  const btn = $("test-notify");
+els.changeTopicBtn.addEventListener("click", () => {
+  storage.remove("sti-ntfy-topic");
+  state.ntfyTopic = "";
+  renderTopic();
+  els.topicInput.focus();
+});
+
+els.testNotifyBtn.addEventListener("click", async () => {
+  const btn = els.testNotifyBtn;
   if (!state.ntfyTopic) {
     btn.textContent = "Set a topic first";
     setTimeout(() => (btn.textContent = "Send test"), 1800);
@@ -623,24 +757,35 @@ $("test-notify").addEventListener("click", async () => {
       body: "STI Pulse test — if you see this, alerts work.",
     });
     const data = await res.json().catch(() => null);
-    btn.textContent = res.ok && data?.id ? "Sent ✓" : "Failed";
+    if (res.ok && data?.id) {
+      btn.textContent = "Sent ✓";
+      btn.classList.add("flash-ok");
+    } else {
+      btn.textContent = "Failed";
+      btn.classList.add("flash-err");
+    }
   } catch (error) {
     logWarn("test notification", error);
     btn.textContent = "Failed";
+    btn.classList.add("flash-err");
   }
-  setTimeout(() => { btn.disabled = false; btn.textContent = "Send test"; }, 1800);
+  setTimeout(() => { btn.disabled = false; btn.textContent = "Send test"; btn.classList.remove("flash-ok", "flash-err"); }, 1800);
 });
 
 els.enableNotifs.addEventListener("click", async () => {
   if (!("Notification" in window)) {
     els.enableNotifs.textContent = "Not supported";
+    els.enableNotifs.disabled = true;
     return;
   }
-  let perm = "default";
-  try { perm = await Notification.requestPermission(); } catch (error) { logWarn("notification permission", error); }
-  renderNotifState();
-  if (perm === "granted") {
-    try { new Notification("STI Pulse", { body: "Alerts are on for this device.", icon: "icon-192.png" }); } catch { /* platform-blocked */ }
+  try {
+    const perm = await Notification.requestPermission();
+    renderNotifState();
+    if (perm === "granted") {
+      try { new Notification("STI Pulse", { body: "Alerts are on for this device.", icon: "icon-192.png" }); } catch { /* platform-blocked */ }
+    }
+  } catch (error) {
+    logWarn("notification permission", error);
   }
 });
 
@@ -651,13 +796,16 @@ function renderNotifState() {
   if (Notification.permission === "granted") {
     btn.textContent = "Alerts on ✓";
     btn.disabled = true;
+    els.installHint.textContent = "Browser pushes are on for this device.";
     return;
   }
   if (Notification.permission === "denied") {
-    btn.textContent = "Permission denied";
-    btn.disabled = true;
-    els.installHint.textContent = "Alerts blocked — enable them for this site in browser settings.";
+    btn.textContent = "Alerts blocked";
+    btn.title = "Enable in browser settings — site permissions";
+    els.installHint.textContent = "Alerts are blocked for this site. Enable them in your browser settings.";
+    return;
   }
+  els.installHint.textContent = "On phone: browser menu → “Add to Home screen”.";
 }
 
 /* ---------- Install prompt ---------- */
@@ -688,7 +836,7 @@ if ("serviceWorker" in navigator) {
   window.addEventListener("load", async () => {
     try {
       const reg = await navigator.serviceWorker.register("sw.js");
-      const notify = () => { els.updateToast.classList.add("show"); };
+      const notify = () => { els.updateToast.hidden = false; els.updateToast.classList.add("show"); };
       reg.addEventListener("updatefound", () => {
         const installing = reg.installing;
         if (!installing) return;
@@ -701,7 +849,14 @@ if ("serviceWorker" in navigator) {
     }
   });
   els.updateReload.addEventListener("click", () => window.location.reload());
-  els.updateDismiss.addEventListener("click", () => els.updateToast.classList.remove("show"));
+  els.updateDismiss.addEventListener("click", () => {
+    els.updateToast.classList.remove("show");
+    els.updateToast.hidden = true;
+  });
+  // If a new SW takes control mid-session, reload once to serve fresh assets
+  if (navigator.serviceWorker.controller) {
+    navigator.serviceWorker.addEventListener("controllerchange", () => window.location.reload());
+  }
 }
 
 /* ---------- Tab overflow cue ---------- */
@@ -722,42 +877,32 @@ updateTabsCue();
 /* Keep data fresh while the app is open */
 setInterval(() => {
   if (document.hidden) return;
-  fetch("data.json", { cache: "no-cache" })
-    .then((r) => (r.ok ? r.text() : Promise.reject(new Error(`HTTP ${r.status}`))))
-    .then((text) => {
-      if (text.trim().startsWith("<")) throw new Error("got a web page instead of data");
-      const data = JSON.parse(text);
-      if (!isPlainObject(data) || !Array.isArray(data.assignments)) return;
-      state.assignments = data.assignments;
-      state.lastPoll = data.lastPoll || null;
-      state.lastError = data.lastError || null;
-      state.offlineMode = false;
-      state.pollFailures = 0;
-      storage.set(DATA_CACHE, text);
-      renderAll();
-    })
-    .catch((error) => {
-      logWarn("background refresh", error);
-      state.pollFailures += 1;
-      if (state.pollFailures >= 2) state.lastError = "Background refresh failed repeatedly.";
-      renderStatus();
-    });
+  refreshData();
 }, 60_000);
-document.addEventListener("visibilitychange", () => {
-  if (!document.hidden) {
-    fetch("data.json", { cache: "no-cache" })
-      .then((r) => (r.ok ? r.text() : null))
-      .then((text) => {
-        if (!text || text.trim().startsWith("<")) return;
-        const data = JSON.parse(text);
-        if (!isPlainObject(data) || !Array.isArray(data.assignments)) return;
-        state.assignments = data.assignments;
-        state.lastPoll = data.lastPoll || null;
-        state.lastError = data.lastError || null;
-        state.offlineMode = false;
-        storage.set(DATA_CACHE, text);
-        renderAll();
-      })
-      .catch((error) => logWarn("visibility refresh", error));
+document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshData(); });
+
+async function refreshData() {
+  try {
+    const data = await fetchDataJson();
+    const changed = data.lastPoll !== state.lastPoll || (data.assignments?.length ?? -1) !== state.assignments.length;
+    if (!changed) {
+      setText(els.lastChecked, `Checked ${fmtRelative(data.lastPoll)}`);
+      state.pollFailures = 0;
+      return;
+    }
+    state.assignments = data.assignments.filter((a) => a && typeof a.uid === "string");
+    state.lastPoll = data.lastPoll || null;
+    state.lastError = data.lastError || null;
+    state.termEnd = data.termEnd || null;
+    state.offlineMode = false;
+    state.pollFailures = 0;
+    storage.set(DATA_CACHE, JSON.stringify(data));
+    renderAll();
+  } catch (error) {
+    logWarn("background refresh", error);
+    state.pollFailures += 1;
+    if (state.pollFailures >= 2) state.lastError = "Background refresh failed repeatedly.";
+    renderStatus();
+    renderList();
   }
-});
+}

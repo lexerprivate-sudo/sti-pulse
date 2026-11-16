@@ -1,6 +1,6 @@
-const CACHE = "sti-pulse-v24";
+const CACHE = "sti-pulse-v25";
 const CRITICAL = ["./", "offline.html", "manifest.webmanifest", "icon.svg", "icon-192.png", "icon-512.png"];
-const OPTIONAL = ["schedule.json", "data.json"];
+const OPTIONAL = ["schedule.json", "data.json", "submitted.json"];
 const ALL_SHELL = [...CRITICAL, ...OPTIONAL];
 
 function isFreshEnough(response) {
@@ -78,7 +78,7 @@ self.addEventListener("fetch", (event) => {
       (async () => {
         const cache = await caches.open(CACHE);
         try {
-          const response = await fetch(request, { signal: AbortSignal.timeout(5000) });
+          const response = await fetch(request, { signal: AbortSignal.timeout(2500) });
           if (isFreshEnough(response) && (response.headers.get("content-type") || "").includes("text/html")) {
             cache.put(key, response.clone()).catch(() => {});
             return response;
@@ -90,30 +90,33 @@ self.addEventListener("fetch", (event) => {
           (await cache.match(key)) ||
           (await cache.match("./")) ||
           (await cache.match("offline.html")) ||
-          new Response("<h1>Offline</h1>", { status: 200, headers: { "content-type": "text/html" } })
+          new Response("<h1>Offline</h1>", { status: 503, headers: { "content-type": "text/html" } })
         );
       })()
     );
     return;
   }
 
-  // Static assets: cache-first with background revalidate, content-type guarded.
+  // Static assets: stale-while-revalidate (return cached, fetch in background)
   event.respondWith(
     (async () => {
       const cache = await caches.open(CACHE);
       const key = url.origin + url.pathname;
       const cached = await cache.match(key);
-      if (cached) return cached;
-      try {
-        const response = await fetch(request);
+      const networkFetch = fetch(request).then((response) => {
         if (isFreshEnough(response)) {
           cache.put(key, response.clone()).catch(() => {});
         }
         return response;
-      } catch (error) {
+      }).catch((error) => {
         logCacheMiss(error);
-        return new Response("Offline and unavailable", { status: 503, statusText: "Service Unavailable" });
+        return cached;
+      });
+      if (cached) {
+        networkFetch.catch(() => {});
+        return cached;
       }
+      return networkFetch;
     })()
   );
 });

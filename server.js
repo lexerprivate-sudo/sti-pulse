@@ -53,14 +53,23 @@ function publicState() {
       pollMinutes: config.pollMinutes,
       dailyDigest: config.dailyDigest,
       feedUrlSet: Boolean(config.feedUrl),
-      feedHost: config.feedUrl ? new URL(config.feedUrl).host : null,
+      feedHost: safeFeedHost(config.feedUrl),
     },
   };
 }
 
+function safeFeedHost(url) {
+  try {
+    if (!url) return null;
+    return new URL(url).host;
+  } catch {
+    return null;
+  }
+}
+
 function daysUntil(due) {
   const ms = new Date(due).getTime() - Date.now();
-  return Math.ceil(ms / 86_400_000);
+  return Math.floor(ms / 86_400_000);
 }
 
 async function notifyNew(items) {
@@ -304,7 +313,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   // Static files
-  let filePath = path.join(publicDir, decodeURIComponent(url.pathname));
+  let filePath; try { filePath = path.join(publicDir, decodeURIComponent(url.pathname)); } catch { res.writeHead(400); return res.end("Bad path"); }
   if (url.pathname === "/") filePath = path.join(publicDir, "index.html");
   const resolved = path.resolve(filePath);
   const rel = path.relative(path.resolve(publicDir), resolved);
