@@ -1,5 +1,5 @@
 {
-  "lastPoll": "2026-11-15T19:58:46.164Z",
+  "lastPoll": "2026-11-16T00:00:25.270Z",
   "lastError": null,
   "lastAck": 1794671069472,
   "seen": {
@@ -410,6 +410,6 @@
     }
   ],
   "termEnd": "2026-12-12T23:59:00+08:00",
-  "lastDigestDate": "2026-11-15",
+  "lastDigestDate": "2026-11-16",
   "classNotified": {}
 }
