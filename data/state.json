@@ -1,5 +1,5 @@
 {
-  "lastPoll": "2026-11-19T16:15:29.018Z",
+  "lastPoll": "2026-11-20T00:00:25.664Z",
   "lastError": null,
   "lastAck": 1794671069472,
   "seen": {
@@ -410,7 +410,7 @@
     }
   ],
   "termEnd": "2026-12-12T23:59:00+08:00",
-  "lastDigestDate": "2026-11-19",
+  "lastDigestDate": "2026-11-20",
   "classNotified": {
     "2026-11-18|Purposive Communication|15:00": "2026-11-18T04:00:24.916Z",
     "2026-11-18|Euthenics 1|18:00": "2026-11-18T07:00:24.721Z",
