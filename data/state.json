@@ -1,5 +1,5 @@
 {
-  "lastPoll": "2026-11-20T16:00:28.615Z",
+  "lastPoll": "2026-11-21T00:00:23.090Z",
   "lastError": null,
   "lastAck": 1794671069472,
   "seen": {
@@ -410,7 +410,7 @@
     }
   ],
   "termEnd": "2026-12-12T23:59:00+08:00",
-  "lastDigestDate": "2026-11-20",
+  "lastDigestDate": "2026-11-21",
   "classNotified": {
     "2026-11-19|The Contemporary World|18:00": "2026-11-19T07:00:26.033Z",
     "2026-11-20|Intro to Computing|15:00": "2026-11-20T04:00:21.162Z",
