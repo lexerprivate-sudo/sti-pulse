@@ -1,5 +1,5 @@
 {
-  "lastPoll": "2026-11-21T00:00:23.090Z",
+  "lastPoll": "2026-11-21T01:15:24.435Z",
   "lastError": null,
   "lastAck": 1794671069472,
   "seen": {
@@ -157,6 +157,11 @@
       "title": "Final Journal Dropbox",
       "due": "2026-12-18T23:59:00+08:00",
       "firstSeen": "2026-11-14T15:36:08.863Z"
+    },
+    "AssignmentEvent-60303907": {
+      "title": "PERFORMANCE TASK (GENDER BREAD MODEL)",
+      "due": "2026-11-21T23:59:00+08:00",
+      "firstSeen": "2026-11-21T01:15:24.435Z"
     }
   },
   "assignments": [
