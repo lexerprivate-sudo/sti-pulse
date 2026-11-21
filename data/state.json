@@ -1,5 +1,5 @@
 {
-  "lastPoll": "2026-11-21T01:15:24.435Z",
+  "lastPoll": "2026-11-21T02:30:30.996Z",
   "lastError": null,
   "lastAck": 1794671069472,
   "seen": {
@@ -419,6 +419,7 @@
   "classNotified": {
     "2026-11-19|The Contemporary World|18:00": "2026-11-19T07:00:26.033Z",
     "2026-11-20|Intro to Computing|15:00": "2026-11-20T04:00:21.162Z",
-    "2026-11-20|Intro to Computing — lab|17:30": "2026-11-20T06:30:23.060Z"
+    "2026-11-20|Intro to Computing — lab|17:30": "2026-11-20T06:30:23.060Z",
+    "2026-11-21|Understanding the Self|13:30": "2026-11-21T02:30:30.996Z"
   }
 }
