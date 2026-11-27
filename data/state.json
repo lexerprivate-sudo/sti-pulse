@@ -1,5 +1,5 @@
 {
-  "lastPoll": "2026-11-27T10:15:25.046Z",
+  "lastPoll": "2026-11-27T16:00:24.858Z",
   "lastError": null,
   "lastAck": 1794671069472,
   "seen": {
@@ -442,8 +442,6 @@
   "termEnd": "2026-12-12T23:59:00+08:00",
   "lastDigestDate": "2026-11-27",
   "classNotified": {
-    "2026-11-25|Purposive Communication|15:00": "2026-11-25T04:00:22.955Z",
-    "2026-11-25|Euthenics 1|18:00": "2026-11-25T07:00:24.986Z",
     "2026-11-26|The Contemporary World|18:00": "2026-11-26T07:00:26.931Z",
     "2026-11-27|Intro to Computing|15:00": "2026-11-27T04:00:30.224Z",
     "2026-11-27|Intro to Computing — lab|17:30": "2026-11-27T06:30:25.644Z"
