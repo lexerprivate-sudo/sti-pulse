@@ -1,5 +1,5 @@
 {
-  "lastPoll": "2026-11-27T00:00:22.186Z",
+  "lastPoll": "2026-11-27T04:00:30.224Z",
   "lastError": null,
   "lastAck": 1794671069472,
   "seen": {
@@ -444,6 +444,7 @@
   "classNotified": {
     "2026-11-25|Purposive Communication|15:00": "2026-11-25T04:00:22.955Z",
     "2026-11-25|Euthenics 1|18:00": "2026-11-25T07:00:24.986Z",
-    "2026-11-26|The Contemporary World|18:00": "2026-11-26T07:00:26.931Z"
+    "2026-11-26|The Contemporary World|18:00": "2026-11-26T07:00:26.931Z",
+    "2026-11-27|Intro to Computing|15:00": "2026-11-27T04:00:30.224Z"
   }
 }
